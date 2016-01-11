@@ -92,6 +92,11 @@ class Process
     protected $pid;
 
     /**
+     * @var
+     */
+    protected $shellId;
+
+    /**
      * Is the process alive.
      *
      * @var bool
@@ -427,6 +432,15 @@ class Process
     }
 
     /**
+     * Has the process been started.
+     * @return bool
+     */
+    public function isStarted()
+    {
+        return isset($this->start);
+    }
+
+    /**
      * Is the process alive.
      *
      * @return bool
@@ -513,7 +527,7 @@ class Process
      * Wrap the command with exec so that the PID returned
      * by proc_get_status is the actual PID of the running command.
      * TODO: Toggle or extend to not wrap - then use posix_pid functions
-     * TODO: to determine if the returnd PID+1 exists.
+     * TODO: to determine if the returned PID+1 exists.
      *
      * @param string $cmd
      * @return string

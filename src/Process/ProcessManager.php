@@ -3,6 +3,7 @@
 namespace Process;
 
 use Process\Exceptions\ProcessException;
+use Process\Output\OutputHandler;
 
 
 /**
@@ -47,20 +48,14 @@ class ProcessManager
      * Run each managed process.
      * This is a non blocking call.
      *
-     * @return void
+     * @param OutputHandler $handler
      * @throws ProcessException
      */
-    public function start()
+    public function start(OutputHandler $handler = null)
     {
         foreach ($this->managed as $pid => $process) {
-            if (!$process->isAlive()) {
-                try {
-                    $process->run(false);
-                } catch (ProcessException $ex) {
-                    if (!in_array($ex->getCode(), [Process::ERR_COMPLETED, Process::ERR_RUNNING])) {
-                        throw $ex;
-                    }
-                }
+            if (!$process->isStarted()) {
+                $process->run($handler);
             }
         }
     }
