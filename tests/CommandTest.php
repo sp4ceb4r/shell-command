@@ -110,4 +110,14 @@ class CommandTest extends PHPUnit_Framework_TestCase
         $expected = 'phpunit a b c --long --single z --array f g';
         $this->assertEquals($expected, substr($cmd->serialize(), 0-strlen($expected)));
     }
+
+    public function test_serialize_nameless_option()
+    {
+        $options = [
+            '--' => ['/tmp/1.txt', '/tmp/2.txt'],
+        ];
+
+        $cmd = new Command($_SERVER['PHP_SELF'], [], $options);
+        $this->assertEquals("{$_SERVER['PHP_SELF']} -- /tmp/1.txt /tmp/2.txt", $cmd->serialize());
+    }
 }
