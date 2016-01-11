@@ -537,10 +537,13 @@ class Process
     }
 
     /**
-     * Wrap the command with exec so that the PID returned
-     * by proc_get_status is the actual PID of the running command.
-     * TODO: Toggle or extend to not wrap - then use posix_pid functions
-     * TODO: to determine if the returned PID+1 exists.
+     * proc_get_status returns the process id of the subshell opened
+     * when proc_open is called, and not the actual process id of
+     * the command executed. In order to the the actual command process
+     * id we must call "command" with "exec". The downside to this
+     * is that we are unable to execute compound commands.
+     *
+     * TODO: Verify that the actual command process id will be subshell pid+1
      *
      * @param string $cmd
      * @return string
