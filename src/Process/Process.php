@@ -227,7 +227,7 @@ class Process
      * @param Closure $closure
      * @return Process
      */
-    public function onError(Closure $closure)
+    public function onError(Closure $closure = null)
     {
         $this->onError = $closure;
 
@@ -241,7 +241,7 @@ class Process
      * @param Closure $closure
      * @return Process
      */
-    public function onSuccess(Closure $closure)
+    public function onSuccess(Closure $closure = null)
     {
         $this->onSuccess = $closure;
 
