@@ -484,7 +484,7 @@ class Process
      */
     protected function cleanup()
     {
-        if (!$this->running) {
+        if ($this->running) {
             throw new LogicException("Process [{$this->pid}] still running.");
         }
 
