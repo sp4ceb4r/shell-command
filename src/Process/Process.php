@@ -2,6 +2,7 @@
 
 namespace Process;
 
+use Closure;
 use Exception;
 use InvalidArgumentException;
 use LogicException;
@@ -16,7 +17,7 @@ class Process
     const ERR_RUNNING = 20;
 
     /**
-     * Default descriptors for proc_open.
+     * Default pipe descriptors for proc_open.
      * 0 - stdin
      * 1 - stdout
      * 2 - stderr
@@ -44,13 +45,6 @@ class Process
     const NON_BLOCKING = false;
 
     /**
-     * The process resource.
-     *
-     * @var resource
-     */
-    protected $resource;
-
-    /**
      * The command to execute.
      *
      * @var Command
@@ -58,11 +52,11 @@ class Process
     protected $command;
 
     /**
-     * Working directory for the command execute in.
+     * The process resource.
      *
-     * @var string|null
+     * @var resource
      */
-    protected $cwd;
+    protected $resource;
 
     /**
      * Run the process interactively.
@@ -72,11 +66,18 @@ class Process
     protected $interactive = false;
 
     /**
+     * Working directory for the command execute in.
+     *
+     * @var string
+     */
+    protected $cwd;
+
+    /**
      * Descriptors for proc_open pipes.
      *
      * @var array
      */
-    protected $pipedescriptors;
+    protected $descriptors;
 
     /**
      * The Process Id.
@@ -93,32 +94,18 @@ class Process
     protected $running = false;
 
     /**
-     * Was the process terminated by uncaught signal.
-     *
-     * @var bool
-     */
-    protected $signaled = false;
-
-    /**
-     * Was the process stopped by a signal.
-     *
-     * @var bool
-     */
-    protected $stopped = false;
-
-    /**
-     * Was the process killed.
-     *
-     * @var bool
-     */
-    protected $killed = false;
-
-    /**
      * The process exit code.
      *
      * @var int
      */
     protected $exitcode = -1;
+
+    /**
+     * Was the process terminated by uncaught signal.
+     *
+     * @var bool
+     */
+    protected $signaled = false;
 
     /**
      * Signal which caused the process to stop. Only meaningful when $signaled true.
@@ -128,11 +115,35 @@ class Process
     protected $stopsig;
 
     /**
+     * Was the process stopped by a signal.
+     *
+     * @var bool
+     */
+    protected $stopped = false;
+
+    /**
      * Signal which terminated the process. Only meaningful when $stopped true.
      *
      * @var int
      */
     protected $termsig;
+
+    /**
+     * Was the process killed by the user.
+     *
+     * @var bool
+     */
+    protected $killed = false;
+
+    /**
+     * @var Closure
+     */
+    protected $onSuccess;
+
+    /**
+     * @var Closure
+     */
+    protected $onError;
 
     /**
      * Process stdin stream.
@@ -181,7 +192,7 @@ class Process
 
         $this->cwd = $cwd;
 
-        $this->pipedescriptors = static::$descriptorspec;
+        $this->descriptors = static::$descriptorspec;
     }
 
     /**
@@ -206,6 +217,34 @@ class Process
         }
 
         $this->cwd = $cwd;
+        return $this;
+    }
+
+    /**
+     * Set the function to be called once the process completes
+     * if the process exits non 0.
+     *
+     * @param Closure $closure
+     * @return Process
+     */
+    public function onError(Closure $closure)
+    {
+        $this->onError = $closure;
+
+        return $this;
+    }
+
+    /**
+     * Set the function to be called once the process completes
+     * if the process exits 0.
+     *
+     * @param Closure $closure
+     * @return Process
+     */
+    public function onSuccess(Closure $closure)
+    {
+        $this->onSuccess = $closure;
+
         return $this;
     }
 
@@ -281,6 +320,16 @@ class Process
     }
 
     /**
+     * Get Process id.
+     *
+     * @return int
+     */
+    public function getPid()
+    {
+        return $this->pid;
+    }
+
+    /**
      * Get the process exit code.
      *
      * @return int
@@ -304,16 +353,6 @@ class Process
         } else {
             return -1;
         }
-    }
-
-    /**
-     * Get Process id.
-     *
-     * @return int
-     */
-    public function getPid()
-    {
-        return $this->pid;
     }
 
     /**
@@ -372,7 +411,7 @@ class Process
      *
      * @throws LogicException
      */
-    protected function validate()
+    protected final function validate()
     {
         if (isset($this->pid) && !isset($this->resource)) {
             throw new LogicException("Process [{$this->pid}] closed.", static::ERR_COMPLETED);
@@ -381,81 +420,6 @@ class Process
         }
 
         $this->command->validate();
-    }
-
-    /**
-     * Execute the command.
-     *
-     * @param bool $blocking
-     * @param bool $interactive
-     * @throws LogicException
-     * @throws ProcessException
-     */
-    protected function exec($blocking = true, $interactive = false)
-    {
-        $this->validate();
-
-        $mode = $blocking ? static::BLOCKING : static::NON_BLOCKING;
-
-        $this->resource = proc_open($this->wrapCommand($this->command->serialize()),
-                                    $this->pipedescriptors,
-                                    $pipes,
-                                    $this->cwd,
-                                    null);
-
-        if ($this->resource === false) {
-            $this->cleanup();
-            throw new ProcessException("Error executing command [{$this->command}].", $this);
-        }
-
-        $this->running = true;
-
-        if ($interactive) {
-            $this->stdin = $pipes[0];
-        } else {
-            fclose($pipes[0]);
-        }
-
-        $this->stdout = $pipes[1];
-        $this->stderr = $pipes[2];
-
-        stream_set_blocking($this->stdout, $mode);
-        stream_set_blocking($this->stderr, $mode);
-
-        unset($pipes);
-    }
-
-    /**
-     * Release the process memory.
-     *
-     * @return void
-     */
-    protected function cleanup()
-    {
-        if (!isset($this->resource)) {
-            return;
-        }
-
-        if (isset($this->stdout) && is_resource($this->stdout)) {
-            $tmp = $this->stdout;
-            unset($this->stdout);
-
-            $this->stdout = stream_get_contents($tmp);
-            fclose($tmp);
-            unset($tmp);
-        }
-
-        if (isset($this->stderr) && is_resource($this->stderr)) {
-            $tmp = $this->stderr;
-            unset($this->stderr);
-
-            $this->stderr = stream_get_contents($tmp);
-            fclose($tmp);
-            unset($tmp);
-        }
-
-        proc_close($this->resource);
-        unset($this->resource);
     }
 
     /**
@@ -511,6 +475,95 @@ class Process
         }
 
         return $cmd;
+    }
+
+    /**
+     * Release the process memory.
+     *
+     * @return void
+     */
+    protected function cleanup()
+    {
+        if (!$this->running) {
+            throw new LogicException("Process [{$this->pid}] still running.");
+        }
+
+        if (!isset($this->resource)) {
+            return;
+        }
+
+        if (isset($this->stdout) && is_resource($this->stdout)) {
+            $tmp = $this->stdout;
+            unset($this->stdout);
+
+            $this->stdout = stream_get_contents($tmp);
+            fclose($tmp);
+            unset($tmp);
+        }
+
+        if (isset($this->stderr) && is_resource($this->stderr)) {
+            $tmp = $this->stderr;
+            unset($this->stderr);
+
+            $this->stderr = stream_get_contents($tmp);
+            fclose($tmp);
+            unset($tmp);
+        }
+
+        proc_close($this->resource);
+        unset($this->resource);
+
+        if ($this->exitcode === 0) {
+            if (isset($this->onSuccess)) {
+                call_user_func($this->onSuccess);
+            }
+        } else {
+            if (isset($this->onError)) {
+                call_user_func($this->onError);
+            }
+        }
+    }
+
+    /**
+     * Execute the command.
+     *
+     * @param bool $blocking
+     * @param bool $interactive
+     * @throws LogicException
+     * @throws ProcessException
+     */
+    private function exec($blocking = true, $interactive = false)
+    {
+        $this->validate();
+
+        $mode = $blocking ? static::BLOCKING : static::NON_BLOCKING;
+
+        $this->resource = proc_open($this->wrapCommand($this->command->serialize()),
+            $this->descriptors,
+            $pipes,
+            $this->cwd,
+            null);
+
+        if ($this->resource === false) {
+            $this->cleanup();
+            throw new ProcessException("Error executing command [{$this->command}].", $this);
+        }
+
+        $this->running = true;
+
+        if ($interactive) {
+            $this->stdin = $pipes[0];
+        } else {
+            fclose($pipes[0]);
+        }
+
+        $this->stdout = $pipes[1];
+        $this->stderr = $pipes[2];
+
+        stream_set_blocking($this->stdout, $mode);
+        stream_set_blocking($this->stderr, $mode);
+
+        unset($pipes);
     }
 
     /**
