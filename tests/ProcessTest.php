@@ -1,7 +1,8 @@
 <?php
 
-use Process\Command;
+use Process\Commands\Command;
 use Process\Process;
+
 
 /**
  * Class ProcessTest
@@ -10,47 +11,43 @@ class ProcessTest extends PHPUnit_Framework_TestCase
 {
     public function test_run()
     {
-        $cmd = Command::command('ls')->withOptions(['-l']);
+        $cmd = Command::make('ls')->withOptions(['-l']);
+        $handler = new Accumulator();
+
         $process = new Process($cmd);
-
-        $process->run();
-
-        $out = $process->readStdOut();
-        $err = $process->readStdErr();
+        $process->run($handler);
+        $process->wait();
 
         $this->assertEquals(0, $process->getExitCode());
-        $this->assertEmpty($err);
-        $this->assertNotEmpty($out);
-        $this->assertFalse($process->killed());
+        $this->assertCount(0, $handler->stderr);
+        $this->assertGreaterThan(0, count($handler->stdout));
         $this->assertFalse($process->isAlive());
     }
 
     public function test_run_with_exec()
     {
-        $process = new Process(Command::command('exec ls')->withArgs('-l'));
+        $handler = new Accumulator();
+        $process = new Process(Command::make('exec ls')->withArgs('-l'));
 
-        $process->run();
-
-        $out = $process->readStdOut();
-        $err = $process->readStdErr();
+        $process->run($handler)->wait();
 
         $this->assertEquals(0, $process->getExitCode());
-        $this->assertEmpty($err);
-        $this->assertNotEmpty($out);
-        $this->assertFalse($process->killed());
+        $this->assertEmpty($handler->stderr);
+        $this->assertNotEmpty($handler->stdout);
         $this->assertFalse($process->isAlive());
     }
 
     public function test_run_long_running_blocking()
     {
         $time = time();
-        $process = Process::process(Command::command('sleep')->withArgs(5))->run();
+
+        $process = Process::make(Command::make('sleep')->withArgs(5))->run();
+        $process->wait();
 
         $diff = time() - $time;
         $this->assertTrue($diff >= 5);
 
         $this->assertEquals(0, $process->getExitCode());
-        $this->assertFalse($process->killed());
         $this->assertFalse($process->isAlive());
     }
 
@@ -58,34 +55,42 @@ class ProcessTest extends PHPUnit_Framework_TestCase
     {
         $cwd = __DIR__.'/../../';
 
-        $cmd = Command::command('find')->withArgs('.');
-        $process = Process::process($cmd)->usingCwd($cwd)
-                                         ->run(false);
+        $cmd = Command::make('find')->withArgs('.');
+        $handler = new ReadCounter();
 
-        $out = [];
-        $reads = 0;
-        while ($process->isAlive()) {
-            $out += explode("\n", $process->readStdOut());
-            $reads++;
-        }
+        $process = Process::make($cmd)->usingCwd($cwd)
+                                      ->run($handler);
+        $process->wait();
 
-        $this->assertTrue($reads > 0);
-        $this->assertNotEmpty($out);
+        $this->assertGreaterThan(0, $handler->reads);
+        $this->assertNotEmpty($handler->stdout);
 
         $this->assertEquals(0, $process->getExitCode());
         $this->assertFalse($process->isAlive());
-        $this->assertFalse($process->killed());
+    }
+
+    public function test_wait_timeout()
+    {
+        $start = time();
+
+        $process = Process::make(Command::make('sleep')->withArgs(5))
+                                                       ->run();;
+        $process->wait(2);
+
+        $this->assertLessThan(5, time() - $start);
+        $this->assertEquals(SIGTERM, $process->getSignal());
     }
 
     public function test_kill()
     {
         $start = time();
-        $process = Process::process(Command::command('sleep')->withArgs(5))->run(false);;
 
+        $process = Process::make(Command::make('sleep')->withArgs(5))
+                                                       ->run();;
+        usleep(100000);
         $process->kill();
 
         $this->assertLessThan(5, time() - $start);
-        $this->assertTrue($process->killed());
-        $this->assertEquals(SIGTERM, $process->getTermSig());
+        $this->assertEquals(SIGTERM, $process->getSignal());
     }
 }

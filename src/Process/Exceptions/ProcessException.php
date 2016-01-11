@@ -1,8 +1,9 @@
 <?php
 
-namespace Process;
+namespace Process\Exceptions;
 
 use Exception;
+use Process\Process;
 
 
 /**

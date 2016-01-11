@@ -6,6 +6,10 @@ use Closure;
 use Exception;
 use InvalidArgumentException;
 use LogicException;
+use Process\Commands\CommandInterface;
+use Process\Exceptions\ProcessException;
+use Process\Output\OutputHandler;
+use RuntimeException;
 
 
 /**
@@ -13,22 +17,12 @@ use LogicException;
  */
 class Process
 {
+    const STDIN = 0;
+    const STDOUT = 1;
+    const STDERR = 2;
+
     const ERR_COMPLETED = 17;
     const ERR_RUNNING = 20;
-
-    /**
-     * Default pipe descriptors for proc_open.
-     * 0 - stdin
-     * 1 - stdout
-     * 2 - stderr
-     *
-     * @var array
-     */
-    protected static $descriptorspec = [
-        ['pipe', 'r'],
-        ['pipe', 'w'],
-        ['pipe', 'w'],
-    ];
 
     /**
      * Stream mode - reads wait until data available.
@@ -45,9 +39,20 @@ class Process
     const NON_BLOCKING = false;
 
     /**
+     * Default pipe descriptors for proc_open.
+     *
+     * @var array
+     */
+    protected static $descriptorspec = [
+        ['pipe', 'r'],
+        ['pipe', 'w'],
+        ['pipe', 'w'],
+    ];
+
+    /**
      * The command to execute.
      *
-     * @var Command
+     * @var CommandInterface
      */
     protected $command;
 
@@ -66,18 +71,18 @@ class Process
     protected $interactive = false;
 
     /**
+     * Start time in microseconds since the epoch.
+     *
+     * @var int
+     */
+    protected $start;
+
+    /**
      * Working directory for the command execute in.
      *
      * @var string
      */
     protected $cwd;
-
-    /**
-     * Descriptors for proc_open pipes.
-     *
-     * @var array
-     */
-    protected $descriptors;
 
     /**
      * The Process Id.
@@ -129,13 +134,6 @@ class Process
     protected $termsig;
 
     /**
-     * Was the process killed by the user.
-     *
-     * @var bool
-     */
-    protected $killed = false;
-
-    /**
      * @var Closure
      */
     protected $onSuccess;
@@ -146,33 +144,23 @@ class Process
     protected $onError;
 
     /**
-     * Process stdin stream.
-     *
-     * @var resource
+     * @var OutputHandler
      */
-    protected $stdin;
+    protected $outputHandler;
 
     /**
-     * Process stdout stream.
-     *
-     * @var resource|string
+     * @var array
      */
-    protected $stdout;
+    protected $pipes = [];
 
-    /**
-     * Process stderr stream.
-     *
-     * @var resource|string
-     */
-    protected $stderr;
 
     /**
      * Static Process constructor (preferred when chaining calls).
      *
-     * @param Command $command
+     * @param CommandInterface $command
      * @return Process
      */
-    public static function process(Command $command)
+    public static function make(CommandInterface $command)
     {
         return new Process($command);
     }
@@ -180,10 +168,10 @@ class Process
     /**
      * Process constructor.
      *
-     * @param Command $command
+     * @param CommandInterface $command
      * @param null $cwd
      */
-    public function __construct(Command $command, $cwd = null)
+    public function __construct(CommandInterface $command, $cwd = null)
     {
         $this->command = $command;
         if (is_null($cwd)) {
@@ -191,8 +179,6 @@ class Process
         }
 
         $this->cwd = $cwd;
-
-        $this->descriptors = static::$descriptorspec;
     }
 
     /**
@@ -259,42 +245,20 @@ class Process
     }
 
     /**
-     * Execute the command.
+     * Execute the command asynchronously.
      *
-     * @param bool $blocking
+     * @param OutputHandler $handler
      * @return Process
      * @throws ProcessException
      */
-    public function run($blocking = true)
+    public function run(OutputHandler $handler = null)
     {
-        try {
-            $this->exec($blocking);
-
-            if ($blocking) {
-                while ($this->isAlive()) {
-                    usleep(5000);
-                }
-
-                $this->cleanup();
-            }
-        } catch (ProcessException $ex) {
-            throw $ex;
-        } catch (Exception $ex) {
-            $this->cleanup();
-            throw new ProcessException("Error running $this.", $this, $ex);
+        if ($this->running) {
+            throw new LogicException("$this already running.");
         }
 
-        return $this;
-    }
+        $this->outputHandler = $handler;
 
-    /**
-     * Execute the command interactively.
-     *
-     * @return Process
-     * @throws ProcessException
-     */
-    public function runInteractive()
-    {
         try {
             $this->exec();
         } catch (ProcessException $ex) {
@@ -308,6 +272,89 @@ class Process
     }
 
     /**
+     * Execute the command synchronously.
+     *
+     * @param OutputHandler $handler
+     * @param int $timeout
+     * @return Process
+     * @throws ProcessException
+     */
+    public function runSync(OutputHandler $handler = null, $timeout = -1)
+    {
+        if ($this->running) {
+            throw new LogicException("$this already running.");
+        }
+
+        $this->outputHandler = $handler;
+
+        try {
+            $this->exec();
+
+            $this->wait($timeout);
+        } catch (ProcessException $ex) {
+            throw $ex;
+        } catch (Exception $ex) {
+            $this->cleanup();
+            throw new ProcessException("Error running $this.", $this, $ex);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Execute the command interactively.
+     *
+     * @param OutputHandler $handler
+     * @return Process
+     * @throws ProcessException
+     */
+    public function runInteractive(OutputHandler $handler = null)
+    {
+        if ($this->running) {
+            throw new LogicException("$this already running.");
+        }
+
+        $this->outputHandler = $handler;
+
+        try {
+            $this->exec();
+        } catch (ProcessException $ex) {
+            throw $ex;
+        } catch (Exception $ex) {
+            $this->cleanup();
+            throw new ProcessException("Error running $this.", $this, $ex);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Wait for the process to finish execution.
+     *
+     * @param int $timeout
+     * @param OutputHandler $handler
+     */
+    public function wait($timeout = -1, OutputHandler $handler = null)
+    {
+        $handler = $handler ?: $this->outputHandler;
+
+        $forever = ($timeout < 0);
+
+        while ($this->isAlive()) {
+            usleep(5000);
+
+            $this->read($handler);
+
+            if (!$forever && (microtime(true) - $this->start > $timeout)) {
+                $this->kill();
+                break;
+            }
+        }
+
+        $this->cleanup();
+    }
+
+    /**
      * Sends the text to the interactive processs via its stdin.
      *
      * @param $input
@@ -316,16 +363,16 @@ class Process
      */
     public function send($input)
     {
-        if (!$this->interactive) {
+        if (!$this->isAlive()) {
+            throw new LogicException("Process is not alive.");
+        } elseif (!$this->interactive) {
             throw new LogicException("Process [{$this->pid}] not run interactively.");
-        } elseif (!$this->isAlive()) {
-            throw new LogicException("Process [{$this->pid}] is not alive.");
         }
 
-        $bytes = fwrite($this->stdin, $input, strlen($input));
+        $bytes = fwrite($this->pipes[static::STDIN], $input, strlen($input));
         if ($bytes === false) {
             $this->kill();
-            throw new ProcessException("Error sending [$input] to process stdin.", $this);
+            throw new ProcessException("Error sending [$input] to $this stdin.", $this);
         }
     }
 
@@ -336,6 +383,10 @@ class Process
      */
     public function getPid()
     {
+        if (!$this->running) {
+            throw new LogicException("Process not running.");
+        }
+
         return $this->pid;
     }
 
@@ -356,9 +407,9 @@ class Process
      */
     public function getSignal()
     {
-        if ($this->stopped) {
+        if ($this->signaled) {
             return $this->termsig;
-        } elseif ($this->signaled) {
+        } elseif ($this->stopped) {
             return $this->stopsig;
         } else {
             return -1;
@@ -368,7 +419,7 @@ class Process
     /**
      * Get the process command.
      *
-     * @return Command
+     * @return CommandInterface
      */
     public function getCommand()
     {
@@ -411,57 +462,35 @@ class Process
             usleep(50000);
         }
 
-        $this->killed = true;
         $this->cleanup();
         return true;
     }
 
     /**
-     * Was the process killed.
-     *
-     * @return bool
+     * @param OutputHandler $handler
+     * @return mixed
      */
-    public function killed()
+    public function read(OutputHandler $handler = null)
     {
-        return $this->killed;
+        $stdout = $this->readStream(static::STDOUT);
+        $stderr = $this->readStream(static::STDERR);
+
+        if (!is_null($handler)) {
+            $handler->handle($stdout, $stderr);
+        }
     }
 
     /**
-     * Read the latest output from stdout.
+     * Reads the current contents of the specified pipe.
      *
+     * @param $id
      * @return string
      */
-    public function readStdOut()
+    protected function readStream($id)
     {
-        if (is_resource($this->stdout)) {
-            return stream_get_contents($this->stdout);
-        } elseif (is_null($this->stdout)) {
-            return null;
-        }
+        $data = stream_get_contents($this->pipes[$id]);
 
-        $stdout = $this->stdout;
-        $this->stdout = null;
-
-        return $stdout;
-    }
-
-    /**
-     * Read the latest output from stderr.
-     *
-     * @return string
-     */
-    public function readStdErr()
-    {
-        if (is_resource($this->stderr)) {
-            return stream_get_contents($this->stderr);
-        } elseif (is_null($this->stderr)) {
-            return null;
-        }
-
-        $stderr = $this->stderr;
-        $this->stderr = null;
-
-        return $stderr;
+        return $data;
     }
 
     /**
@@ -483,6 +512,8 @@ class Process
     /**
      * Wrap the command with exec so that the PID returned
      * by proc_get_status is the actual PID of the running command.
+     * TODO: Toggle or extend to not wrap - then use posix_pid functions
+     * TODO: to determine if the returnd PID+1 exists.
      *
      * @param string $cmd
      * @return string
@@ -500,38 +531,31 @@ class Process
     /**
      * Release the process memory.
      *
-     * @return void
+     * @throws RuntimeException
      */
     protected function cleanup()
     {
         if ($this->running) {
-            throw new LogicException("Process [{$this->pid}] still running.");
+            throw new RuntimeException("Process [{$this->pid}] still running.");
         }
 
         if (!isset($this->resource)) {
             return;
         }
 
-        if (isset($this->stdout) && is_resource($this->stdout)) {
-            $tmp = $this->stdout;
-            unset($this->stdout);
+        $this->pid = -1;
+        $this->read($this->outputHandler);
 
-            $this->stdout = stream_get_contents($tmp);
-            fclose($tmp);
-            unset($tmp);
-        }
+        foreach ($this->pipes as $index => $pipe) {
+            if (!$this->interactive && $index === 0) {
+                continue;
+            }
 
-        if (isset($this->stderr) && is_resource($this->stderr)) {
-            $tmp = $this->stderr;
-            unset($this->stderr);
-
-            $this->stderr = stream_get_contents($tmp);
-            fclose($tmp);
-            unset($tmp);
+            fclose($pipe);
         }
 
         proc_close($this->resource);
-        unset($this->resource);
+        unset($this->resource, $this->pipes);
 
         if ($this->exitcode === 0) {
             if (isset($this->onSuccess)) {
@@ -547,43 +571,39 @@ class Process
     /**
      * Execute the command.
      *
-     * @param bool $blocking
      * @param bool $interactive
      * @throws LogicException
      * @throws ProcessException
      */
-    private function exec($blocking = true, $interactive = false)
+    private function exec($interactive = false)
     {
         $this->validate();
 
-        $mode = $blocking ? static::BLOCKING : static::NON_BLOCKING;
-
         $this->resource = proc_open($this->wrapCommand($this->command->serialize()),
-            $this->descriptors,
-            $pipes,
-            $this->cwd,
-            null);
+                                    static::$descriptorspec,
+                                    $this->pipes,
+                                    $this->cwd,
+                                    null);
 
         if ($this->resource === false) {
-            $this->cleanup();
-            throw new ProcessException("Error executing command [{$this->command}].", $this);
+            throw new ProcessException("proc_open failed.", $this);
         }
+
+        $this->start = microtime(true);
 
         $this->running = true;
 
-        if ($interactive) {
-            $this->stdin = $pipes[0];
-        } else {
-            fclose($pipes[0]);
+        if (!$interactive) {
+            fclose($this->pipes[0]);
         }
 
-        $this->stdout = $pipes[1];
-        $this->stderr = $pipes[2];
+        foreach ($this->pipes as $index => $pipe) {
+            if ($index === 0) {
+                continue;
+            }
 
-        stream_set_blocking($this->stdout, $mode);
-        stream_set_blocking($this->stderr, $mode);
-
-        unset($pipes);
+            stream_set_blocking($pipe, static::NON_BLOCKING);
+        }
     }
 
     /**

@@ -1,6 +1,6 @@
 <?php
 
-namespace Process;
+namespace Process\Commands;
 
 use LogicException;
 
@@ -8,7 +8,7 @@ use LogicException;
 /**
  * Class Command
  */
-class Command
+class Command implements CommandInterface
 {
     protected $binary;
 
@@ -22,7 +22,7 @@ class Command
      * @param $name
      * @return Command
      */
-    public static function command($name)
+    public static function make($name)
     {
         return new Command($name);
     }

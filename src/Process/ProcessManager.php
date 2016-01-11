@@ -2,6 +2,8 @@
 
 namespace Process;
 
+use Process\Exceptions\ProcessException;
+
 
 /**
  * Class ProcessManager

@@ -1,6 +1,6 @@
 <?php
 
-use Process\Command;
+use Process\Commands\Command;
 
 /**
  * Class CommandTest
@@ -43,7 +43,7 @@ class CommandTest extends PHPUnit_Framework_TestCase
             '--n1' => ['a','b'],
             '--n2' => [1,2],
         ];
-        $cmd = Command::command($_SERVER['PHP_SELF'])->withOptions($opts);
+        $cmd = Command::make($_SERVER['PHP_SELF'])->withOptions($opts);
         $cmd->validate();
     }
 
@@ -76,7 +76,7 @@ class CommandTest extends PHPUnit_Framework_TestCase
     {
         $args = ['a', 'b', 'c'];
 
-        $cmd = Command::command('phpunit')->withArgs($args);
+        $cmd = Command::make('phpunit')->withArgs($args);
 
         $expected = 'phpunit a b c';
         $this->assertEquals($expected, substr($cmd->serialize(), 0-strlen($expected)));
@@ -90,7 +90,7 @@ class CommandTest extends PHPUnit_Framework_TestCase
             '--single' => 'z',
         ];
 
-        $cmd = Command::command('phpunit')->withOptions($opts);
+        $cmd = Command::make('phpunit')->withOptions($opts);
 
         $expected = 'phpunit --long --single z --array f g';
         $this->assertEquals($expected, substr($cmd->serialize(), 0-strlen($expected)));
