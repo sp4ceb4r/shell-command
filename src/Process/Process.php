@@ -3,6 +3,7 @@
 namespace Process;
 
 use Exception;
+use InvalidArgumentException;
 use LogicException;
 
 
@@ -201,7 +202,7 @@ class Process
     public function usingCwd($cwd)
     {
         if (!is_dir($cwd)) {
-            throw new LogicException("Dir [$cwd] not found.");
+            throw new InvalidArgumentException("Dir [$cwd] not found.");
         }
 
         $this->cwd = $cwd;
@@ -226,21 +227,12 @@ class Process
                 }
 
                 $this->cleanup();
-            } else {
-                if ($this->getExitCode() !== 0) {
-                    if ($this->stopped) {
-                        $code = $this->termsig;
-                    } elseif ($this->signaled) {
-                        $code = $this->stopsig;
-                    } else {
-                        $code = $this->getExitCode();
-                    }
-
-                    throw new ProcessException("Error executing [{$this->command}].", $code);
-                }
             }
+        } catch (ProcessException $ex) {
+            throw $ex;
         } catch (Exception $ex) {
-            throw new ProcessException("Error executing command [{$this->command}].", $ex->getCode(), $ex);
+            $this->cleanup();
+            throw new ProcessException("Error executing command [{$this->command}].", $this, $ex);
         }
 
         return $this;
@@ -256,8 +248,11 @@ class Process
     {
         try {
             $this->exec();
+        } catch (ProcessException $ex) {
+            throw $ex;
         } catch (Exception $ex) {
-            throw new ProcessException("Error executing command [{$this->command}].", $ex->getCode(), $ex);
+            $this->cleanup();
+            throw new ProcessException("Error executing command [{$this->command}].", $this, $ex);
         }
 
         return $this;
@@ -280,7 +275,8 @@ class Process
 
         $bytes = fwrite($this->stdin, $input, strlen($input));
         if ($bytes === false) {
-            throw new ProcessException("Error sending [$input] to process stdin.");
+            $this->kill();
+            throw new ProcessException("Error sending [$input] to process stdin.", $this);
         }
     }
 
@@ -357,6 +353,7 @@ class Process
         }
 
         $this->killed = true;
+        $this->cleanup();
         return true;
     }
 
@@ -407,7 +404,8 @@ class Process
                                     null);
 
         if ($this->resource === false) {
-            throw new ProcessException("Error executing command [{$this->command}].");
+            $this->cleanup();
+            throw new ProcessException("Error executing command [{$this->command}].", $this);
         }
 
         $this->running = true;
