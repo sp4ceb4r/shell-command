@@ -85,7 +85,14 @@ class Process
     protected $cwd;
 
     /**
-     * The Process Id.
+     * Generated id for process.
+     *
+     * @var string
+     */
+    protected $id;
+
+    /**
+     * The actual process id.
      *
      * @var int
      */
@@ -178,11 +185,12 @@ class Process
      */
     public function __construct(CommandInterface $command, $cwd = null)
     {
+        $this->id = substr(sha1(microtime()), -7);
         $this->command = $command;
+
         if (is_null($cwd)) {
             $cwd = __DIR__;
         }
-
         $this->cwd = $cwd;
     }
 
@@ -201,7 +209,7 @@ class Process
      */
     public function __toString()
     {
-        return "Process [{$this->command}, {$this->pid}]";
+        return "Process [{$this->command}, {$this->id}]";
     }
 
     /**
@@ -256,7 +264,7 @@ class Process
      * @return Process
      * @throws ProcessException
      */
-    public function run(OutputHandler $handler = null)
+    public function runAsync(OutputHandler $handler = null)
     {
         if ($this->running) {
             throw new LogicException("$this already running.");
@@ -284,7 +292,7 @@ class Process
      * @return Process
      * @throws ProcessException
      */
-    public function runSync(OutputHandler $handler = null, $timeout = -1)
+    public function run(OutputHandler $handler = null, $timeout = -1)
     {
         if ($this->running) {
             throw new LogicException("$this already running.");
@@ -387,6 +395,11 @@ class Process
      * @return int
      */
     public function getPid()
+    {
+        return $this->id;
+    }
+
+    public function getSystemPid()
     {
         if (!$this->running) {
             throw new LogicException("Process not running.");

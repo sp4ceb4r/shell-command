@@ -15,7 +15,7 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $handler = new Accumulator();
 
         $process = new Process($cmd);
-        $process->run($handler);
+        $process->runAsync($handler);
         $process->wait();
 
         $this->assertEquals(0, $process->getExitCode());
@@ -29,7 +29,7 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $handler = new Accumulator();
         $process = new Process(Command::make('exec ls')->withArgs('-l'));
 
-        $process->run($handler)->wait();
+        $process->runAsync($handler)->wait();
 
         $this->assertEquals(0, $process->getExitCode());
         $this->assertEmpty($handler->stderr);
@@ -41,7 +41,7 @@ class ProcessTest extends PHPUnit_Framework_TestCase
     {
         $time = time();
 
-        $process = Process::make(Command::make('sleep')->withArgs(5))->run();
+        $process = Process::make(Command::make('sleep')->withArgs(5))->runAsync();
         $process->wait();
 
         $diff = time() - $time;
@@ -59,7 +59,7 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $handler = new ReadCounter();
 
         $process = Process::make($cmd)->usingCwd($cwd)
-                                      ->run($handler);
+                                      ->runAsync($handler);
         $process->wait();
 
         $this->assertGreaterThan(0, $handler->reads);
@@ -74,7 +74,7 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $start = time();
 
         $process = Process::make(Command::make('sleep')->withArgs(5))
-                                                       ->run();;
+                                                       ->runAsync();;
         $process->wait(2);
 
         $this->assertLessThan(5, time() - $start);
@@ -86,7 +86,7 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $start = time();
 
         $process = Process::make(Command::make('sleep')->withArgs(5))
-                                                       ->run();;
+                                                       ->runAsync();;
         usleep(100000);
         $process->kill();
 
