@@ -1,6 +1,6 @@
 <?php
 
-use Process\Output\OutputHandler;
+use Shell\Output\OutputHandler;
 
 
 /**

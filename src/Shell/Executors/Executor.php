@@ -1,9 +1,9 @@
 <?php
 
-namespace Process\Executors;
+namespace Shell\Executors;
 
-use Process\Output\OutputHandler;
-use Process\Process;
+use Shell\Output\OutputHandler;
+use Shell\Process;
 
 
 /**

@@ -1,9 +1,10 @@
 <?php
 
-namespace Process\Executors;
+namespace Shell\Executors;
 
 use LogicException;
-use Process\Output\OutputHandler;
+use Shell\Output\OutputHandler;
+use Shell\Process;
 
 
 /**

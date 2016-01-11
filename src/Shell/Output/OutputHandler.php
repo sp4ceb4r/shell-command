@@ -1,6 +1,6 @@
 <?php
 
-namespace Process\Output;
+namespace Shell\Output;
 
 
 /**

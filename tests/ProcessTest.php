@@ -1,7 +1,7 @@
 <?php
 
-use Process\Commands\Command;
-use Process\Process;
+use Shell\Commands\Command;
+use Shell\Process;
 
 
 /**

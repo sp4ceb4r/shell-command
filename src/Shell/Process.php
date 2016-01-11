@@ -1,14 +1,14 @@
 <?php
 
-namespace Process;
+namespace Shell;
 
 use Closure;
 use Exception;
 use InvalidArgumentException;
 use LogicException;
-use Process\Commands\CommandInterface;
-use Process\Exceptions\ProcessException;
-use Process\Output\OutputHandler;
+use Shell\Commands\CommandInterface;
+use Shell\Exceptions\ProcessException;
+use Shell\Output\OutputHandler;
 use RuntimeException;
 
 

@@ -1,6 +1,6 @@
 <?php
 
-namespace Process\Commands;
+namespace Shell\Commands;
 
 
 /**

@@ -1,6 +1,6 @@
 <?php
 
-use Process\Commands\Command;
+use Shell\Commands\Command;
 
 /**
  * Class CommandTest
