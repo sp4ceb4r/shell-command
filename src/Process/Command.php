@@ -114,7 +114,7 @@ class Command
      */
     public function __toString()
     {
-        return $this->serialize();
+        return "Command [{$this->binary}]";
     }
 
     /**
@@ -130,7 +130,7 @@ class Command
         }
 
         if (!is_executable($this->binary)) {
-            throw new LogicException("Command [{$this->binary}] not executable.");
+            throw new LogicException("$this not executable.");
         }
 
         $nargs = false;

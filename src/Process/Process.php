@@ -204,6 +204,16 @@ class Process
     }
 
     /**
+     * Get a string representation of Process.
+     *
+     * @return string
+     */
+    public function __toString()
+    {
+        return "Process [{$this->command}, {$this->pid}]";
+    }
+
+    /**
      * Set the working directory for the process.
      *
      * @param $cwd
@@ -271,7 +281,7 @@ class Process
             throw $ex;
         } catch (Exception $ex) {
             $this->cleanup();
-            throw new ProcessException("Error executing command [{$this->command}].", $this, $ex);
+            throw new ProcessException("Error running $this.", $this, $ex);
         }
 
         return $this;
@@ -291,7 +301,7 @@ class Process
             throw $ex;
         } catch (Exception $ex) {
             $this->cleanup();
-            throw new ProcessException("Error executing command [{$this->command}].", $this, $ex);
+            throw new ProcessException("Error running $this.", $this, $ex);
         }
 
         return $this;
@@ -356,6 +366,16 @@ class Process
     }
 
     /**
+     * Get the process command.
+     *
+     * @return Command
+     */
+    public function getCommand()
+    {
+        return $this->command;
+    }
+
+    /**
      * Is the process alive.
      *
      * @return bool
@@ -407,22 +427,6 @@ class Process
     }
 
     /**
-     * Validate the process can be run.
-     *
-     * @throws LogicException
-     */
-    protected final function validate()
-    {
-        if (isset($this->pid) && !isset($this->resource)) {
-            throw new LogicException("Process [{$this->pid}] closed.", static::ERR_COMPLETED);
-        } elseif ($this->running) {
-            throw new LogicException("Process [{$this->pid}] running.", static::ERR_RUNNING);
-        }
-
-        $this->command->validate();
-    }
-
-    /**
      * Read the latest output from stdout.
      *
      * @return string
@@ -458,6 +462,22 @@ class Process
         $this->stderr = null;
 
         return $stderr;
+    }
+
+    /**
+     * Validate the process can be run.
+     *
+     * @throws LogicException
+     */
+    protected final function validate()
+    {
+        if (isset($this->pid) && !isset($this->resource)) {
+            throw new LogicException("Process [{$this->pid}] closed.", static::ERR_COMPLETED);
+        } elseif ($this->running) {
+            throw new LogicException("Process [{$this->pid}] running.", static::ERR_RUNNING);
+        }
+
+        $this->command->validate();
     }
 
     /**
