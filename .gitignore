@@ -1,0 +1,9 @@
+
+.idea
+.*
+
+/**/vendor
+
+!.gitignore
+!.gitkeep
+

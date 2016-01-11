@@ -1,0 +1,17 @@
+{
+    "name": "sp4ceb4r/php-process",
+    "description": "PHP shell command processing.",
+    "require-dev": {
+        "phpunit/phpunit": "^5.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Process\\": "src/Process"
+        }
+    },
+    "autoload-dev": {
+        "classmap": [
+            "test/"
+        ]
+    }
+}
