@@ -9,7 +9,6 @@ use LogicException;
 use Shell\Commands\CommandInterface;
 use Shell\Exceptions\ProcessException;
 use Shell\Output\OutputHandler;
-use RuntimeException;
 
 
 /**
@@ -144,7 +143,7 @@ class Process
     protected $onError;
 
     /**
-     * @var OutputHandler
+     * @var OutputHandler|Closure
      */
     protected $outputHandler;
 
@@ -247,14 +246,18 @@ class Process
     /**
      * Execute the command asynchronously.
      *
-     * @param OutputHandler $handler
+     * @param OutputHandler|Closure $handler
      * @return Process
      * @throws ProcessException
      */
-    public function runAsync(OutputHandler $handler = null)
+    public function runAsync($handler = null)
     {
         if ($this->running) {
-            throw new LogicException("$this already running.");
+            throw new \RuntimeException("$this already running.");
+        } elseif (!is_null($handler)) {
+            if (!($handler instanceof OutputHandler || $handler instanceof Closure)) {
+                throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
+            }
         }
 
         $this->outputHandler = $handler;
@@ -274,15 +277,19 @@ class Process
     /**
      * Execute the command synchronously.
      *
-     * @param OutputHandler $handler
+     * @param OutputHandler|Closure $handler
      * @param int $timeout
      * @return Process
      * @throws ProcessException
      */
-    public function run(OutputHandler $handler = null, $timeout = -1)
+    public function run($handler = null, $timeout = -1)
     {
         if ($this->running) {
-            throw new LogicException("$this already running.");
+            throw new \RuntimeException("$this already running.");
+        } elseif (!is_null($handler)) {
+            if (!($handler instanceof OutputHandler || $handler instanceof Closure)) {
+                throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
+            }
         }
 
         $this->outputHandler = $handler;
@@ -304,14 +311,18 @@ class Process
     /**
      * Execute the command interactively.
      *
-     * @param OutputHandler $handler
+     * @param OutputHandler|Closure $handler
      * @return Process
      * @throws ProcessException
      */
-    public function runInteractive(OutputHandler $handler = null)
+    public function runInteractive($handler = null)
     {
         if ($this->running) {
-            throw new LogicException("$this already running.");
+            throw new \RuntimeException("$this already running.");
+        } elseif (!is_null($handler)) {
+            if (!($handler instanceof OutputHandler || $handler instanceof Closure)) {
+                throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
+            }
         }
 
         $this->outputHandler = $handler;
@@ -332,13 +343,18 @@ class Process
      * Wait for the process to finish execution.
      *
      * @param int $timeout
-     * @param OutputHandler $handler
+     * @param OutputHandler|Closure $handler
      */
-    public function wait($timeout = -1, OutputHandler $handler = null)
+    public function wait($timeout = -1, $handler = null)
     {
-        $handler = $handler ?: $this->outputHandler;
+        if (!is_null($handler)) {
+            if (!($handler instanceof OutputHandler || $handler instanceof Closure)) {
+                throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
+            }
+        }
 
         $forever = ($timeout < 0);
+        $handler = $handler ?: $this->outputHandler;
 
         while ($this->isAlive()) {
             usleep(5000);
@@ -382,11 +398,6 @@ class Process
      * @return int
      */
     public function getPid()
-    {
-        return $this->id;
-    }
-
-    public function getSystemPid()
     {
         if (!$this->running) {
             throw new LogicException("Process not running.");
@@ -481,17 +492,28 @@ class Process
     }
 
     /**
-     * @param OutputHandler $handler
+     * @param OutputHandler|Closure $handler
      * @return mixed
      */
-    public function read(OutputHandler $handler = null)
+    public function read($handler = null)
     {
+        if (!is_null($handler) && (!($handler instanceof OutputHandler || $handler instanceof Closure))) {
+            throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
+        }
+
         $stdout = $this->readStream(static::STDOUT);
         $stderr = $this->readStream(static::STDERR);
 
-        if (!is_null($handler)) {
+
+        if (is_null($handler)) {
+            return [$stdout, $stderr];
+        } elseif ($handler instanceof OutputHandler) {
             $handler->handle($stdout, $stderr);
+        } else {
+            $handler($stdout, $stderr);
         }
+
+        return null;
     }
 
     /**
@@ -548,12 +570,12 @@ class Process
     /**
      * Release the process memory.
      *
-     * @throws RuntimeException
+     * @throws \RuntimeException
      */
     protected function cleanup()
     {
         if ($this->running) {
-            throw new RuntimeException("Process [{$this->pid}] still running.");
+            throw new \RuntimeException("Process [{$this->pid}] still running.");
         }
 
         if (!isset($this->resource)) {
