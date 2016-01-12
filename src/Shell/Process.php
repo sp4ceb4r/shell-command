@@ -504,16 +504,13 @@ class Process
         $stdout = $this->readStream(static::STDOUT);
         $stderr = $this->readStream(static::STDERR);
 
-
         if (is_null($handler)) {
             return [$stdout, $stderr];
         } elseif ($handler instanceof OutputHandler) {
-            $handler->handle($stdout, $stderr);
+            return $handler->handle($stdout, $stderr);
         } else {
-            $handler($stdout, $stderr);
+            return $handler($stdout, $stderr);
         }
-
-        return null;
     }
 
     /**
