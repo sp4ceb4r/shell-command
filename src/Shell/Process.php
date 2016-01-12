@@ -85,23 +85,11 @@ class Process
     protected $cwd;
 
     /**
-     * Generated id for process.
-     *
-     * @var string
-     */
-    protected $id;
-
-    /**
      * The actual process id.
      *
      * @var int
      */
     protected $pid;
-
-    /**
-     * @var
-     */
-    protected $shellId;
 
     /**
      * Is the process alive.
@@ -185,7 +173,6 @@ class Process
      */
     public function __construct(CommandInterface $command, $cwd = null)
     {
-        $this->id = substr(sha1(microtime()), -7);
         $this->command = $command;
 
         if (is_null($cwd)) {
@@ -609,7 +596,7 @@ class Process
     {
         $this->validate();
 
-        $this->resource = proc_open($this->wrapCommand($this->command->serialize()),
+        $this->resource = proc_open($this->command->serialize(),
                                     static::$descriptorspec,
                                     $this->pipes,
                                     $this->cwd,
