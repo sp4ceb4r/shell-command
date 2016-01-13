@@ -31,8 +31,8 @@ class OutputHandler implements ProcessOutputInterface
      */
     public function handle($stdout, $stderr)
     {
-        $this->stderr .= $stderr;
-        $this->stdout .= $stdout;
+        $this->stderr .= is_null($stderr) ? '' : trim($stdout);
+        $this->stdout .= is_null($stdout) ? '' : trim($stdout);
     }
 
     /**
