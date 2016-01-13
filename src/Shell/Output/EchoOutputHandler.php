@@ -22,10 +22,10 @@ class EchoOutputHandler implements ProcessOutputInterface
     public function handle($stdout, $stderr)
     {
         if (trim($stdout)) {
-            echo "stdout: $stdout\n";
+            echo 'stdout: '.trim($stdout)."\n";
         }
         if (trim($stderr)) {
-            echo "stderr: $stderr\n";
+            echo 'stderr: '.trim($stderr)."\n";
         }
 
         $this->stderr .= $stderr;
