@@ -15,7 +15,7 @@ interface ExecutorInterface
 
     public function join();
 
-    public function start(ProcessOutputInterface $handler = null);
+    public function start();
 
     public function hasAlive();
 }

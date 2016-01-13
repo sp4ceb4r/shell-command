@@ -18,11 +18,6 @@ class PooledExecutor implements ExecutorInterface
     protected $processes;
 
     /**
-     * @var OutputHandler
-     */
-    protected $handler;
-
-    /**
      * @var int
      */
     protected $poolSize;
@@ -31,12 +26,10 @@ class PooledExecutor implements ExecutorInterface
      * PooledExecutor constructor.
      *
      * @param int $poolSize
-     * @param OutputHandler $handler
      */
-    public function __construct($poolSize = -1, ProcessOutputInterface $handler = null)
+    public function __construct($poolSize = -1)
     {
         $this->processes = [];
-        $this->handler = $handler;
         $this->poolSize = $poolSize;
     }
 
@@ -64,14 +57,13 @@ class PooledExecutor implements ExecutorInterface
     /**
      * Run each managed process.
      *
-     * @param OutputHandler $handler
      * @return void
      */
-    public function start(ProcessOutputInterface $handler = null)
+    public function start()
     {
         foreach ($this->processes as $pid => $process) {
             if (!$process->isStarted()) {
-                $process->runAsync($handler ?: $this->handler);
+                $process->runAsync();
             }
         }
     }

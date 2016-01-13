@@ -4,9 +4,9 @@ namespace Shell\Output;
 
 
 /**
- * Class DefaultOutputHandler
+ * Class EchoOutputHandler
  */
-class DefaultOutputHandler implements ProcessOutputInterface
+class EchoOutputHandler implements ProcessOutputInterface
 {
     protected $stdout;
 
@@ -37,7 +37,7 @@ class DefaultOutputHandler implements ProcessOutputInterface
      *
      * @return string
      */
-    public function readStdout()
+    public function readStdOut()
     {
         return $this->stdout;
     }
@@ -46,7 +46,7 @@ class DefaultOutputHandler implements ProcessOutputInterface
      * The stdout read split on newlines.
      * @return array
      */
-    public function readStdoutLines()
+    public function readStdOutLines()
     {
         return array_filter(array_map(function ($line) {
             return trim($line);
@@ -58,7 +58,7 @@ class DefaultOutputHandler implements ProcessOutputInterface
      *
      * @return string
      */
-    public function readStderr()
+    public function readStdErr()
     {
         return $this->stderr;
     }
@@ -68,7 +68,7 @@ class DefaultOutputHandler implements ProcessOutputInterface
      *
      * @return string
      */
-    public function readStderrLines()
+    public function readStdErrLines()
     {
         return array_filter(array_map(function ($line) {
             return trim($line);

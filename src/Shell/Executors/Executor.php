@@ -16,14 +16,9 @@ class Executor implements ExecutorInterface
      */
     protected $pending;
 
-    public function __construct(ProcessOutputInterface $handler) {
-        $this->handler = $handler;
+    public function __construct()
+    {
     }
-
-    /**
-     * @param OutputHandler
-     */
-    protected $handler;
 
     public function manage(Process ...$processes)
     {
@@ -32,9 +27,8 @@ class Executor implements ExecutorInterface
         }
     }
 
-    public function start(ProcessOutputInterface $handler = null)
+    public function start()
     {
-        $this->handler = $handler ?: $this->handler;
         $this->join();
     }
 
@@ -43,7 +37,7 @@ class Executor implements ExecutorInterface
         while (!empty($this->pending)) {
             $process = array_pop($pending);
 
-            $process->run($this->handler);
+            $process->run();
         }
     }
 

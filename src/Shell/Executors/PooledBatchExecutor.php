@@ -20,24 +20,20 @@ class PooledBatchExecutor extends PooledExecutor
      *
      * @param int $batchSize
      * @param int $poolSize
-     * @param OutputHandler|null $handler
      */
-    public function __construct($batchSize = 5, $poolSize = -1, ProcessOutputInterface $handler = null)
+    public function __construct($batchSize = 5, $poolSize = -1)
     {
-        parent::__construct($poolSize, $handler);
-
+        parent::__construct($poolSize);
         $this->batchSize = $batchSize;
     }
 
     /**
      * Run each managed process with up to $batchSize in parallel.
      *
-     * @param OutputHandler $handler
      * @return void
      */
-    public function start(ProcessOutputInterface $handler = null)
+    public function start()
     {
-        $handler = $handler ?: $this->handler;
         $finished = [];
         $running = [];
         $active = 0;
@@ -45,7 +41,7 @@ class PooledBatchExecutor extends PooledExecutor
         while (!empty($this->processes)) {
             while ($active < $this->batchSize && !empty($this->processes)) {
                 $p = array_shift($this->processes);
-                array_push($running, $p->runAsync($handler));
+                array_push($running, $p->runAsync());
 
                 $active++;
             }
@@ -57,7 +53,7 @@ class PooledBatchExecutor extends PooledExecutor
                     unset($running[$index]);
 
                     if (!empty($this->processes)) {
-                        array_push($running, array_shift($this->processes)->runAsync($handler));
+                        array_push($running, array_shift($this->processes)->runAsync());
                         $active++;
                     }
                 }

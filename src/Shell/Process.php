@@ -8,7 +8,7 @@ use InvalidArgumentException;
 use LogicException;
 use Shell\Commands\CommandInterface;
 use Shell\Exceptions\ProcessException;
-use Shell\Output\DefaultOutputHandler;
+use Shell\Output\EchoOutputHandler;
 use Shell\Output\ProcessOutputInterface;
 
 
@@ -176,7 +176,7 @@ class Process
     public function __construct(CommandInterface $command, $cwd = null, ProcessOutputInterface $outputHandler = null)
     {
         if (is_null($outputHandler)) {
-            $outputHandler = new DefaultOutputHandler();
+            $outputHandler = new EchoOutputHandler();
         }
 
         $this->command = $command;
@@ -567,7 +567,6 @@ class Process
             if (isset($this->onError)) {
                 call_user_func($this->onError, $this);
             } else {
-
                 throw new ProcessException('Error executing process.', $this);
             }
         }
@@ -583,12 +582,6 @@ class Process
     private function exec($interactive = false)
     {
         $this->validate();
-
-        $env = $_SERVER;
-        $env['USERNAME'] = 'jacob';
-        $env['USER'] = 'jacob';
-        $env['SSH_AUTH_SOCK'] = '/private/tmp/com.apple.launchd.yvNmEVjLDV/Listeners';
-
 
         $this->resource = proc_open($this->command->serialize(),
                                     static::$descriptorspec,

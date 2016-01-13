@@ -22,25 +22,25 @@ interface ProcessOutputInterface
      *
      * @return string
      */
-    public function readStdout();
+    public function readStdOut();
 
     /**
      * The stdout read split on newlines.
      * @return array
      */
-    public function readStdoutLines();
+    public function readStdOutLines();
 
     /**
      * The stderr read.
      *
      * @return string
      */
-    public function readStderr();
+    public function readStdErr();
 
     /**
      * The stderr read split on newlines.
      *
      * @return array
      */
-    public function readStderrLines();
+    public function readStdErrLines();
 }
