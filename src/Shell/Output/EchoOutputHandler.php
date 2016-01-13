@@ -6,12 +6,8 @@ namespace Shell\Output;
 /**
  * Class EchoOutputHandler
  */
-class EchoOutputHandler implements ProcessOutputInterface
+class EchoOutputHandler extends OutputHandler
 {
-    protected $stdout;
-
-    protected $stderr;
-
     /**
      * Handle the command output.
      *
@@ -21,57 +17,13 @@ class EchoOutputHandler implements ProcessOutputInterface
      */
     public function handle($stdout, $stderr)
     {
+        parent::handle($stdout, $stderr);
+
         if (trim($stdout)) {
             echo trim($stdout)."\n";
         }
         if (trim($stderr)) {
             echo trim($stderr)."\n";
         }
-
-        $this->stderr .= $stderr;
-        $this->stdout .= $stdout;
-    }
-
-    /**
-     * The stdout read.
-     *
-     * @return string
-     */
-    public function readStdOut()
-    {
-        return $this->stdout;
-    }
-
-    /**
-     * The stdout read split on newlines.
-     * @return array
-     */
-    public function readStdOutLines()
-    {
-        return array_filter(array_map(function ($line) {
-            return trim($line);
-        }, explode("\n", $this->stdout)));
-    }
-
-    /**
-     * The stderr read.
-     *
-     * @return string
-     */
-    public function readStdErr()
-    {
-        return $this->stderr;
-    }
-
-    /**
-     * The stderr read split on newlines.
-     *
-     * @return string
-     */
-    public function readStdErrLines()
-    {
-        return array_filter(array_map(function ($line) {
-            return trim($line);
-        }, explode("\n", $this->stderr)));
     }
 }
