@@ -13,14 +13,14 @@ class OutputHandler implements ProcessOutputInterface
      *
      * @var string
      */
-    protected $stdout;
+    protected $stdout = '';
 
     /**
      * Raw read stderr.
      *
      * @var string
      */
-    protected $stderr;
+    protected $stderr = '';
 
     /**
      * Handle the command output.
@@ -31,8 +31,13 @@ class OutputHandler implements ProcessOutputInterface
      */
     public function handle($stdout, $stderr)
     {
-        $this->stderr .= is_null($stderr) ? '' : trim($stdout);
-        $this->stdout .= is_null($stdout) ? '' : trim($stdout);
+        if (!is_null($stdout)) {
+            $this->stdout .= $stdout;
+        }
+
+        if (!is_null($stderr)) {
+            $this->stderr .= $stderr;
+        }
     }
 
     /**
@@ -47,13 +52,12 @@ class OutputHandler implements ProcessOutputInterface
 
     /**
      * The stdout read split on newlines.
+     *
      * @return array
      */
     public function readStdOutLines()
     {
-        return array_filter(array_map(function ($line) {
-            return trim($line);
-        }, explode("\n", $this->stdout)));
+        return $this->split($this->stdout);
     }
 
     /**
@@ -73,8 +77,27 @@ class OutputHandler implements ProcessOutputInterface
      */
     public function readStdErrLines()
     {
-        return array_filter(array_map(function ($line) {
+        return $this->split($this->stderr);
+    }
+
+    /**
+     * Splits text on newlines filtering out empty lines.
+     *
+     * @param $text
+     * @param bool $keepEmpty
+     * @return array
+     */
+    protected final function split($text, $keepEmpty = false)
+    {
+        $lines = array_map(function ($line) {
             return trim($line);
-        }, explode("\n", $this->stderr)));
+        }, explode("\n", $text));
+
+        if (!$keepEmpty) {
+            $lines = array_filter($lines);
+            return array_values($lines);
+        }
+
+        return $lines;
     }
 }
