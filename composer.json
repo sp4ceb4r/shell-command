@@ -24,6 +24,5 @@
         "classmap": [
             "tests/"
         ]
-    },
-    "minimum-stability": "dev"
+    }
 }
