@@ -8,7 +8,8 @@ use InvalidArgumentException;
 use LogicException;
 use Shell\Commands\CommandInterface;
 use Shell\Exceptions\ProcessException;
-use Shell\Output\OutputHandler;
+use Shell\Output\DefaultOutputHandler;
+use Shell\Output\ProcessOutputInterface;
 
 
 /**
@@ -143,7 +144,7 @@ class Process
     protected $onError;
 
     /**
-     * @var OutputHandler|Closure
+     * @var OutputHandler
      */
     protected $outputHandler;
 
@@ -157,11 +158,12 @@ class Process
      * Static Process constructor (preferred when chaining calls).
      *
      * @param CommandInterface $command
+     * @param ProcessOutputInterface $outputHandler
      * @return Process
      */
-    public static function make(CommandInterface $command)
+    public static function make(CommandInterface $command, ProcessOutputInterface $outputHandler = null)
     {
-        return new Process($command);
+        return new Process($command, null, $outputHandler);
     }
 
     /**
@@ -169,10 +171,16 @@ class Process
      *
      * @param CommandInterface $command
      * @param null $cwd
+     * @param ProcessOutputInterface $outputHandler
      */
-    public function __construct(CommandInterface $command, $cwd = null)
+    public function __construct(CommandInterface $command, $cwd = null, ProcessOutputInterface $outputHandler = null)
     {
+        if (is_null($outputHandler)) {
+            $outputHandler = new DefaultOutputHandler();
+        }
+
         $this->command = $command;
+        $this->outputHandler = $outputHandler;
 
         if (is_null($cwd)) {
             $cwd = __DIR__;
@@ -189,13 +197,11 @@ class Process
     }
 
     /**
-     * Get a string representation of Process.
-     *
-     * @return string
+     * @return ProcessOutputInterface
      */
-    public function __toString()
+    public function getOutputHandler()
     {
-        return "Process [{$this->command}, {$this->id}]";
+        return $this->outputHandler;
     }
 
     /**
@@ -208,7 +214,7 @@ class Process
     public function usingCwd($cwd)
     {
         if (!is_dir($cwd)) {
-            throw new InvalidArgumentException("Dir [$cwd] not found.");
+            throw new InvalidArgumentException("Directory [$cwd] not found.");
         }
 
         $this->cwd = $cwd;
@@ -246,21 +252,14 @@ class Process
     /**
      * Execute the command asynchronously.
      *
-     * @param OutputHandler|Closure $handler
      * @return Process
      * @throws ProcessException
      */
-    public function runAsync($handler = null)
+    public function runAsync()
     {
         if ($this->running) {
-            throw new \RuntimeException("$this already running.");
-        } elseif (!is_null($handler)) {
-            if (!($handler instanceof OutputHandler || $handler instanceof Closure)) {
-                throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
-            }
+            throw new \RuntimeException('Process already running.');
         }
-
-        $this->outputHandler = $handler;
 
         try {
             $this->exec();
@@ -268,7 +267,7 @@ class Process
             throw $ex;
         } catch (Exception $ex) {
             $this->cleanup();
-            throw new ProcessException("Error running $this.", $this, $ex);
+            throw new ProcessException('Unknown process exception.', $this, $ex);
         }
 
         return $this;
@@ -277,22 +276,15 @@ class Process
     /**
      * Execute the command synchronously.
      *
-     * @param OutputHandler|Closure $handler
      * @param int $timeout
      * @return Process
      * @throws ProcessException
      */
-    public function run($handler = null, $timeout = -1)
+    public function run($timeout = -1)
     {
         if ($this->running) {
-            throw new \RuntimeException("$this already running.");
-        } elseif (!is_null($handler)) {
-            if (!($handler instanceof OutputHandler || $handler instanceof Closure)) {
-                throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
-            }
+            throw new \RuntimeException('Process already running.');
         }
-
-        $this->outputHandler = $handler;
 
         try {
             $this->exec();
@@ -302,7 +294,7 @@ class Process
             throw $ex;
         } catch (Exception $ex) {
             $this->cleanup();
-            throw new ProcessException("Error running $this.", $this, $ex);
+            throw new ProcessException('Unknown process exception.', $this, $ex);
         }
 
         return $this;
@@ -311,21 +303,14 @@ class Process
     /**
      * Execute the command interactively.
      *
-     * @param OutputHandler|Closure $handler
      * @return Process
      * @throws ProcessException
      */
-    public function runInteractive($handler = null)
+    public function runInteractive()
     {
         if ($this->running) {
-            throw new \RuntimeException("$this already running.");
-        } elseif (!is_null($handler)) {
-            if (!($handler instanceof OutputHandler || $handler instanceof Closure)) {
-                throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
-            }
+            throw new \RuntimeException('Process already running.');
         }
-
-        $this->outputHandler = $handler;
 
         try {
             $this->exec();
@@ -333,7 +318,7 @@ class Process
             throw $ex;
         } catch (Exception $ex) {
             $this->cleanup();
-            throw new ProcessException("Error running $this.", $this, $ex);
+            throw new ProcessException('Unknown process exception.', $this, $ex);
         }
 
         return $this;
@@ -343,28 +328,20 @@ class Process
      * Wait for the process to finish execution.
      *
      * @param int $timeout
-     * @param OutputHandler|Closure $handler
      */
-    public function wait($timeout = -1, $handler = null)
+    public function wait($timeout = -1)
     {
-        if (!is_null($handler)) {
-            if (!($handler instanceof OutputHandler || $handler instanceof Closure)) {
-                throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
-            }
-        }
-
         $forever = ($timeout < 0);
-        $handler = $handler ?: $this->outputHandler;
 
         while ($this->isAlive()) {
-            usleep(5000);
-
-            $this->read($handler);
+            $this->read();
 
             if (!$forever && (microtime(true) - $this->start > $timeout)) {
                 $this->kill();
                 break;
             }
+
+            usleep(5000);
         }
 
         $this->cleanup();
@@ -380,9 +357,9 @@ class Process
     public function send($input)
     {
         if (!$this->isAlive()) {
-            throw new LogicException("Process is not alive.");
+            throw new LogicException('Process is not alive.');
         } elseif (!$this->interactive) {
-            throw new LogicException("Process [{$this->pid}] not run interactively.");
+            throw new LogicException("Process [{$this->pid}] not running interactively.");
         }
 
         $bytes = fwrite($this->pipes[static::STDIN], $input, strlen($input));
@@ -400,7 +377,7 @@ class Process
     public function getPid()
     {
         if (!$this->running) {
-            throw new LogicException("Process not running.");
+            throw new LogicException('Process not running.');
         }
 
         return $this->pid;
@@ -492,25 +469,14 @@ class Process
     }
 
     /**
-     * @param OutputHandler|Closure $handler
-     * @return mixed
+     * @return void
      */
-    public function read($handler = null)
+    public function read()
     {
-        if (!is_null($handler) && (!($handler instanceof OutputHandler || $handler instanceof Closure))) {
-            throw new \RuntimeException("Handler must be instance of [OutputInterface] or [Closure].");
-        }
-
         $stdout = $this->readStream(static::STDOUT);
         $stderr = $this->readStream(static::STDERR);
 
-        if (is_null($handler)) {
-            return [$stdout, $stderr];
-        } elseif ($handler instanceof OutputHandler) {
-            return $handler->handle($stdout, $stderr);
-        } else {
-            return $handler($stdout, $stderr);
-        }
+        $this->outputHandler->handle($stdout, $stderr);
     }
 
     /**
@@ -534,9 +500,9 @@ class Process
     protected final function validate()
     {
         if (isset($this->pid) && !isset($this->resource)) {
-            throw new LogicException("Process [{$this->pid}] closed.", static::ERR_COMPLETED);
+            throw new LogicException('Process already closed.', static::ERR_COMPLETED);
         } elseif ($this->running) {
-            throw new LogicException("Process [{$this->pid}] running.", static::ERR_RUNNING);
+            throw new LogicException('Process already running.', static::ERR_RUNNING);
         }
 
         $this->command->validate();
@@ -572,7 +538,7 @@ class Process
     protected function cleanup()
     {
         if ($this->running) {
-            throw new \RuntimeException("Process [{$this->pid}] still running.");
+            throw new \RuntimeException('Cleanup error - process still running.');
         }
 
         if (!isset($this->resource)) {
@@ -580,7 +546,7 @@ class Process
         }
 
         $this->pid = -1;
-        $this->read($this->outputHandler);
+        $this->read();
 
         foreach ($this->pipes as $index => $pipe) {
             if (!$this->interactive && $index === 0) {
@@ -599,7 +565,10 @@ class Process
             }
         } else {
             if (isset($this->onError)) {
-                call_user_func($this->onError);
+                call_user_func($this->onError, $this);
+            } else {
+
+                throw new ProcessException('Error executing process.', $this);
             }
         }
     }
@@ -615,6 +584,12 @@ class Process
     {
         $this->validate();
 
+        $env = $_SERVER;
+        $env['USERNAME'] = 'jacob';
+        $env['USER'] = 'jacob';
+        $env['SSH_AUTH_SOCK'] = '/private/tmp/com.apple.launchd.yvNmEVjLDV/Listeners';
+
+
         $this->resource = proc_open($this->command->serialize(),
                                     static::$descriptorspec,
                                     $this->pipes,
@@ -622,7 +597,7 @@ class Process
                                     null);
 
         if ($this->resource === false) {
-            throw new ProcessException("proc_open failed.", $this);
+            throw new ProcessException('Call to [proc_open] failed.', $this);
         }
 
         $this->start = microtime(true);

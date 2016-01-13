@@ -12,11 +12,6 @@ use Shell\Process;
 class ProcessException extends Exception
 {
     /**
-     * @var Process
-     */
-    protected $process;
-
-    /**
      * ProcessException constructor.
      *
      * @param string $message
@@ -25,18 +20,6 @@ class ProcessException extends Exception
      */
     public function __construct($message, Process $process, Exception $previous = null)
     {
-        parent::__construct($message, 0, $previous);
-
-        $this->process = $process;
-    }
-
-    /**
-     * Process getter.
-     *
-     * @return Process
-     */
-    public function getProcess()
-    {
-        return $this->process;
+        parent::__construct($message, $process->getExitCode(), $previous);
     }
 }

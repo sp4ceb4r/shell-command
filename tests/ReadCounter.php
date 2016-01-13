@@ -1,12 +1,12 @@
 <?php
 
-use Shell\Output\OutputHandler;
+use Shell\Output\ProcessOutputInterface;
 
 
 /**
  * Class ReadCounter
  */
-class ReadCounter implements  OutputHandler
+class ReadCounter implements  ProcessOutputInterface
 {
     public $reads = 0;
 

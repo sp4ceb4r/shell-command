@@ -2,7 +2,7 @@
 
 namespace Shell\Commands;
 
-use LogicException;
+use Shell\Exceptions\CommandException;
 
 
 /**
@@ -15,6 +15,8 @@ class Command implements CommandInterface
     protected $args = [];
 
     protected $options = [];
+
+    protected $compounds = [];
 
     /**
      * Command static constructor (preferred when using builders).
@@ -39,11 +41,12 @@ class Command implements CommandInterface
         if (preg_match("/(?:exec )?(?<cmd>[^\\s]+).*/", $name, $matches) === 1) {
             $this->binary = $this->find($matches['cmd']);
         } else {
-            throw new LogicException("Command [$name] not recognized.");
+            throw new CommandException("Command [$name] not recognized.");
         }
 
         $this->args = $args;
         $this->options = $options;
+        $this->compounds[] = $this;
     }
 
     /**
@@ -95,6 +98,8 @@ class Command implements CommandInterface
 
             if (is_numeric($option)) {
                 $options[] = strval($value);
+            } elseif (is_bool($value)) {
+                $options[] = $option;
             } else {
                 $options[] = trim("$option $value");
             }
@@ -121,23 +126,23 @@ class Command implements CommandInterface
      * Verify the command binary.
      *
      * @return void
-     * @throws LogicException
+     * @throws CommandException
      */
     public function validate()
     {
         if ($this->binary === false) {
-            throw new LogicException("Command not found.");
+            throw new CommandException("Command not found.");
         }
 
         if (!is_executable($this->binary)) {
-            throw new LogicException("$this not executable.");
+            throw new CommandException("$this not executable.");
         }
 
         $nargs = false;
         foreach ($this->options as $option => $value) {
             if (is_array($value)) {
                 if ($nargs) {
-                    throw new LogicException("Multiple nargs detected.");
+                    throw new CommandException("Multiple nargs detected.");
                 }
 
                 $nargs = true;

@@ -2,7 +2,7 @@
 
 namespace Shell\Executors;
 
-use Shell\Output\OutputHandler;
+use Shell\Output\ProcessOutputInterface;
 use Shell\Process;
 
 
@@ -16,7 +16,7 @@ class Executor implements ExecutorInterface
      */
     protected $pending;
 
-    public function __construct(OutputHandler $handler) {
+    public function __construct(ProcessOutputInterface $handler) {
         $this->handler = $handler;
     }
 
@@ -32,7 +32,7 @@ class Executor implements ExecutorInterface
         }
     }
 
-    public function start(OutputHandler $handler = null)
+    public function start(ProcessOutputInterface $handler = null)
     {
         $this->handler = $handler ?: $this->handler;
         $this->join();

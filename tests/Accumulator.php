@@ -1,12 +1,12 @@
 <?php
 
-use Shell\Output\OutputHandler;
+use Shell\Output\ProcessOutputInterface;
 
 
 /**
  * Class Accumulator
  */
-class Accumulator implements OutputHandler
+class Accumulator implements ProcessOutputInterface
 {
     /**
      * @var array

@@ -2,7 +2,7 @@
 
 namespace Shell\Executors;
 
-use Shell\Output\OutputHandler;
+use Shell\Output\ProcessOutputInterface;
 
 
 /**
@@ -22,7 +22,7 @@ class PooledBatchExecutor extends PooledExecutor
      * @param int $poolSize
      * @param OutputHandler|null $handler
      */
-    public function __construct($batchSize = 5, $poolSize = -1, OutputHandler $handler = null)
+    public function __construct($batchSize = 5, $poolSize = -1, ProcessOutputInterface $handler = null)
     {
         parent::__construct($poolSize, $handler);
 
@@ -35,7 +35,7 @@ class PooledBatchExecutor extends PooledExecutor
      * @param OutputHandler $handler
      * @return void
      */
-    public function start(OutputHandler $handler = null)
+    public function start(ProcessOutputInterface $handler = null)
     {
         $handler = $handler ?: $this->handler;
         $finished = [];

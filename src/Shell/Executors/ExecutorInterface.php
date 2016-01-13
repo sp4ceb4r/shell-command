@@ -2,7 +2,7 @@
 
 namespace Shell\Executors;
 
-use Shell\Output\OutputHandler;
+use Shell\Output\ProcessOutputInterface;
 use Shell\Process;
 
 
@@ -15,7 +15,7 @@ interface ExecutorInterface
 
     public function join();
 
-    public function start(OutputHandler $handler = null);
+    public function start(ProcessOutputInterface $handler = null);
 
     public function hasAlive();
 }

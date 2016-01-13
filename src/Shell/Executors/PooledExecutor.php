@@ -3,7 +3,7 @@
 namespace Shell\Executors;
 
 use LogicException;
-use Shell\Output\OutputHandler;
+use Shell\Output\ProcessOutputInterface;
 use Shell\Process;
 
 
@@ -33,7 +33,7 @@ class PooledExecutor implements ExecutorInterface
      * @param int $poolSize
      * @param OutputHandler $handler
      */
-    public function __construct($poolSize = -1, OutputHandler $handler = null)
+    public function __construct($poolSize = -1, ProcessOutputInterface $handler = null)
     {
         $this->processes = [];
         $this->handler = $handler;
@@ -67,7 +67,7 @@ class PooledExecutor implements ExecutorInterface
      * @param OutputHandler $handler
      * @return void
      */
-    public function start(OutputHandler $handler = null)
+    public function start(ProcessOutputInterface $handler = null)
     {
         foreach ($this->processes as $pid => $process) {
             if (!$process->isStarted()) {
