@@ -1,20 +1,29 @@
 {
     "name": "sp4ceb4r/shell-command",
-    "description": "PHP shell command processing.",
-
+    "type": "library",
+    "description": "Shell command module for PHP.",
+    "keywords": [ "shell", "process", "command" ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jacob Schofield"
+        }
+    ],
+    "require": {
+        "php": ">=5.5.9"
+    },
     "require-dev": {
         "phpunit/phpunit": "^5.1"
     },
-
     "autoload": {
         "psr-4": {
             "Shell\\": "src/Shell"
         }
     },
-
     "autoload-dev": {
         "classmap": [
             "tests/"
         ]
-    }
+    },
+    "minimum-stability": "dev"
 }
