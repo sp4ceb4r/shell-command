@@ -17,12 +17,12 @@ use Shell\Output\ProcessOutputInterface;
  */
 class Process
 {
-    const STDIN = 0;
+    const STDIN  = 0;
     const STDOUT = 1;
     const STDERR = 2;
 
     const ERR_COMPLETED = 17;
-    const ERR_RUNNING = 20;
+    const ERR_RUNNING   = 20;
 
     /**
      * Stream mode - reads wait until data available.
@@ -43,10 +43,10 @@ class Process
      *
      * @var array
      */
-    protected static $descriptorspec = [
-        ['pipe', 'r'],
-        ['pipe', 'w'],
-        ['pipe', 'w'],
+    protected $descriptorspec = [
+        self::STDIN  => ['pipe', 'r'],
+        self::STDOUT => ['pipe', 'w'],
+        self::STDERR => ['pipe', 'w'],
     ];
 
     /**
@@ -250,19 +250,93 @@ class Process
     }
 
     /**
+     * @return mixed
+     */
+    public function getStdin()
+    {
+        return $this->pipes[static::STDIN];
+    }
+
+    /**
+     * @param $stdin
+     *
+     * @return $this
+     */
+    public function setStdin($stdin)
+    {
+        if ($this->running) {
+            throw new \RuntimeException('Process already running.');
+        }
+
+        $this->descriptorspec[static::STDIN] = $stdin;
+
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getStdout()
+    {
+        return $this->pipes[static::STDOUT];
+    }
+
+    /**
+     * @param $stdout
+     *
+     * @return $this
+     */
+    public function setStdout($stdout)
+    {
+        if ($this->running) {
+            throw new \RuntimeException('Process already running.');
+        }
+
+        $this->descriptorspec[static::STDOUT] = $stdout;
+
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getStderr()
+    {
+        return $this->pipes[static::STDERR];
+    }
+
+    /**
+     * @param $stderr
+     *
+     * @return $this
+     */
+    public function setStderr($stderr)
+    {
+        if ($this->running) {
+            throw new \RuntimeException('Process already running.');
+        }
+
+        $this->descriptorspec[static::STDERR] = $stderr;
+
+        return $this;
+    }
+
+    /**
      * Execute the command asynchronously.
+     *
+     * @param bool $blocking
      *
      * @return Process
      * @throws ProcessException
      */
-    public function runAsync()
+    public function runAsync($blocking = self::NON_BLOCKING)
     {
         if ($this->running) {
             throw new \RuntimeException('Process already running.');
         }
 
         try {
-            $this->exec();
+            $this->exec(false, $blocking);
         } catch (ProcessException $ex) {
             throw $ex;
         } catch (Exception $ex) {
@@ -277,17 +351,19 @@ class Process
      * Execute the command synchronously.
      *
      * @param int $timeout
+     * @param bool $blocking
+     *
      * @return Process
      * @throws ProcessException
      */
-    public function run($timeout = -1)
+    public function run($timeout = -1, $blocking = self::NON_BLOCKING)
     {
         if ($this->running) {
             throw new \RuntimeException('Process already running.');
         }
 
         try {
-            $this->exec();
+            $this->exec(false, $blocking);
 
             $this->wait($timeout);
         } catch (ProcessException $ex) {
@@ -303,17 +379,19 @@ class Process
     /**
      * Execute the command interactively.
      *
+     * @param bool $blocking
+     *
      * @return Process
      * @throws ProcessException
      */
-    public function runInteractive()
+    public function runInteractive($blocking = self::NON_BLOCKING)
     {
         if ($this->running) {
             throw new \RuntimeException('Process already running.');
         }
 
         try {
-            $this->exec();
+            $this->exec(true, $blocking);
         } catch (ProcessException $ex) {
             throw $ex;
         } catch (Exception $ex) {
@@ -487,6 +565,10 @@ class Process
      */
     protected function readStream($id)
     {
+        if (isset($this->descriptorspec[$id]) && is_resource($this->descriptorspec[$id])) {
+            return '';
+        }
+
         $data = stream_get_contents($this->pipes[$id]);
 
         return $data;
@@ -549,7 +631,7 @@ class Process
         $this->read();
 
         foreach ($this->pipes as $index => $pipe) {
-            if (!$this->interactive && $index === 0) {
+            if (!$this->interactive && $index === static::STDIN) {
                 continue;
             }
 
@@ -576,15 +658,16 @@ class Process
      * Execute the command.
      *
      * @param bool $interactive
-     * @throws LogicException
+     * @param bool $blocking
+     *
      * @throws ProcessException
      */
-    private function exec($interactive = false)
+    private function exec($interactive = false, $blocking = self::NON_BLOCKING)
     {
         $this->validate();
 
         $this->resource = proc_open($this->command->serialize(),
-                                    static::$descriptorspec,
+                                    $this->descriptorspec,
                                     $this->pipes,
                                     $this->cwd,
                                     null);
@@ -597,16 +680,16 @@ class Process
 
         $this->running = true;
 
-        if (!$interactive) {
-            fclose($this->pipes[0]);
+        if (!$interactive && isset($this->pipes[static::STDIN]) && is_resource($this->pipes[static::STDIN])) {
+            fclose($this->pipes[static::STDIN]);
         }
 
         foreach ($this->pipes as $index => $pipe) {
-            if ($index === 0) {
+            if ($index === static::STDIN) {
                 continue;
             }
 
-            stream_set_blocking($pipe, static::NON_BLOCKING);
+            stream_set_blocking($pipe, $blocking);
         }
     }
 
