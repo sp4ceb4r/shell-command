@@ -41,7 +41,7 @@ class Process
     /**
      * @var array
      */
-    protected $excepectedExitcodes = [0];
+    protected $expectedExitcodes = [0];
 
     /**
      * Default pipe descriptors for proc_open.
@@ -565,19 +565,19 @@ class Process
     /**
      * @return array
      */
-    public function getExcepectedExitcodes()
+    public function getExpectedExitcodes()
     {
-        return $this->excepectedExitcodes;
+        return $this->expectedExitcodes;
     }
 
     /**
-     * @param array $excepectedExitcodes
+     * @param array $expectedExitcodes
      *
      * @return $this
      */
-    public function setExcepectedExitcodes(array $excepectedExitcodes)
+    public function setExpectedExitcodes(array $expectedExitcodes)
     {
-        $this->excepectedExitcodes = $excepectedExitcodes;
+        $this->expectedExitcodes = $expectedExitcodes;
 
         return $this;
     }
@@ -666,7 +666,7 @@ class Process
         proc_close($this->resource);
         unset($this->resource, $this->pipes);
 
-        if (in_array($this->exitcode, $this->excepectedExitcodes)) {
+        if (in_array($this->exitcode, $this->getExpectedExitcodes())) {
             if (isset($this->onSuccess)) {
                 call_user_func($this->onSuccess);
             }
