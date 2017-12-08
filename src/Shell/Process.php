@@ -645,7 +645,7 @@ class Process
     protected function cleanup()
     {
         if ($this->running) {
-            throw new \RuntimeException('Cleanup error - process still running.');
+            throw new \RuntimeException(sprintf('Cleanup error - process still running: %s', is_scalar($this->command) ? $this->command : $this->command->serialize()));
         }
 
         if (!isset($this->resource)) {
@@ -674,7 +674,7 @@ class Process
             if (isset($this->onError)) {
                 call_user_func($this->onError, $this);
             } else {
-                throw new ProcessException('Error executing process.', $this);
+                throw new ProcessException(sprintf('Error executing process: %s', is_scalar($this->command) ? $this->command : $this->command->serialize()), $this);
             }
         }
     }
