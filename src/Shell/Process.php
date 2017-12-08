@@ -39,6 +39,11 @@ class Process
     const NON_BLOCKING = false;
 
     /**
+     * @var array
+     */
+    protected $excepectedExitcodes = [0];
+
+    /**
      * Default pipe descriptors for proc_open.
      *
      * @var array
@@ -558,6 +563,26 @@ class Process
     }
 
     /**
+     * @return array
+     */
+    public function getExcepectedExitcodes()
+    {
+        return $this->excepectedExitcodes;
+    }
+
+    /**
+     * @param array $excepectedExitcodes
+     *
+     * @return $this
+     */
+    public function setExcepectedExitcodes(array $excepectedExitcodes)
+    {
+        $this->excepectedExitcodes = $excepectedExitcodes;
+
+        return $this;
+    }
+
+    /**
      * Reads the current contents of the specified pipe.
      *
      * @param $id
@@ -565,7 +590,7 @@ class Process
      */
     protected function readStream($id)
     {
-        if (isset($this->descriptorspec[$id]) && is_resource($this->descriptorspec[$id])) {
+        if (isset($this->descriptorspec[$id]) && (is_resource($this->descriptorspec[$id]) || (isset($this->descriptorspec[$id][0]) && $this->descriptorspec[$id][0] == 'file'))) {
             return '';
         }
 
@@ -641,7 +666,7 @@ class Process
         proc_close($this->resource);
         unset($this->resource, $this->pipes);
 
-        if ($this->exitcode === 0) {
+        if (in_array($this->exitcode, $this->excepectedExitcodes)) {
             if (isset($this->onSuccess)) {
                 call_user_func($this->onSuccess);
             }
