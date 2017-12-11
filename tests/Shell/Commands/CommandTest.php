@@ -8,7 +8,7 @@ use Shell\Commands\Command;
 class CommandTest extends PHPUnit_Framework_TestCase
 {
     /**
-     * @expectedException LogicException
+     * @expectedException RuntimeException
      */
     public function test_validate_empty_binary()
     {
@@ -17,7 +17,7 @@ class CommandTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException LogicException
+     * @expectedException RuntimeException
      */
     public function test_validate_non_file_binary()
     {
@@ -26,7 +26,7 @@ class CommandTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException LogicException
+     * @expectedException RuntimeException
      */
     public function test_validate_non_executable_binary()
     {
@@ -35,7 +35,7 @@ class CommandTest extends PHPUnit_Framework_TestCase
     }
 
     /**
-     * @expectedException LogicException
+     * @expectedException RuntimeException
      */
     public function test_validate_multiple_nargs()
     {
