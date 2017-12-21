@@ -729,6 +729,10 @@ class Process
 
         if ($this->running) {
             foreach (proc_get_status($this->resource) as $key => $value) {
+                if ($key == 'command') {
+                    continue;
+                }
+
                 $this->$key = $value;
             }
         }
