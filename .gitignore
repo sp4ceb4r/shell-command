@@ -6,4 +6,4 @@
 
 !.gitignore
 !.gitkeep
-
+!.travis.yml

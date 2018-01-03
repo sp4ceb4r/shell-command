@@ -10,6 +10,9 @@
          stopOnFailure="false"
          syntaxCheck="false">
     <testsuites>
+        <testsuite name="Shell Command Test Suite">
+            <directory>tests/</directory>
+        </testsuite>
     </testsuites>
     <filter>
     </filter>
