@@ -590,7 +590,9 @@ class Process
      */
     protected function readStream($id)
     {
-        if (isset($this->descriptorspec[$id]) && (is_resource($this->descriptorspec[$id]) || (isset($this->descriptorspec[$id][0]) && $this->descriptorspec[$id][0] == 'file'))) {
+        $isDescriptorFile = isset($this->descriptorspec[$id][0]) && $this->descriptorspec[$id][0] == 'file';
+        $isDescriptorResource = isset($this->descriptorspec[$id]) && is_resource($this->descriptorspec[$id]);
+        if ($isDescriptorFile || $isDescriptorResource) {
             return '';
         }
 

@@ -146,7 +146,7 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $this->assertSame('Process already running.', $actual->getMessage());
     }
 
-    public function test_use_file_pipe_for_stdin()
+    public function test_use_file_descriptor_for_stdin()
     {
         $process = Process::make(Command::make('cat'), new OutputHandler());
         $process->setStdin(['file', __FILE__, 'r']);
@@ -154,5 +154,19 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $output = stream_get_contents($process->getStdout(), 5);
         $process->wait();
         $this->assertSame('<?php', $output);
+    }
+
+    public function test_use_file_descriptor_for_stdout()
+    {
+        $process = Process::make(Command::make('ls'), new OutputHandler());
+        $process->setStdout(['file', '/dev/null', 'w']);
+        $process->run();
+    }
+
+    public function test_use_resource_for_stdout()
+    {
+        $process = Process::make(Command::make('ls'), new OutputHandler());
+        $process->setStdout(fopen('/dev/null', 'w'));
+        $process->run();
     }
 }
