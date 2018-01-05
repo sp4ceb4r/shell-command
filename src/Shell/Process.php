@@ -255,7 +255,7 @@ class Process
     }
 
     /**
-     * @return mixed
+     * @return resource
      */
     public function getStdin()
     {
@@ -263,7 +263,7 @@ class Process
     }
 
     /**
-     * @param $stdin
+     * @param resource|array $stdin
      *
      * @return $this
      */
@@ -279,7 +279,7 @@ class Process
     }
 
     /**
-     * @return mixed
+     * @return resource
      */
     public function getStdout()
     {
@@ -287,7 +287,7 @@ class Process
     }
 
     /**
-     * @param $stdout
+     * @param resource|array $stdout
      *
      * @return $this
      */
@@ -303,7 +303,7 @@ class Process
     }
 
     /**
-     * @return mixed
+     * @return resource
      */
     public function getStderr()
     {
@@ -311,7 +311,7 @@ class Process
     }
 
     /**
-     * @param $stderr
+     * @param resource|array $stderr
      *
      * @return $this
      */
@@ -431,9 +431,9 @@ class Process
     }
 
     /**
-     * Sends the text to the interactive processs via its stdin.
+     * Sends the text to the interactive process via its stdin.
      *
-     * @param $input
+     * @param string $input
      * @throws LogicException
      * @throws ProcessException
      */
@@ -590,7 +590,9 @@ class Process
      */
     protected function readStream($id)
     {
-        if (isset($this->descriptorspec[$id]) && (is_resource($this->descriptorspec[$id]) || (isset($this->descriptorspec[$id][0]) && $this->descriptorspec[$id][0] == 'file'))) {
+        $isDescriptorFile = isset($this->descriptorspec[$id][0]) && $this->descriptorspec[$id][0] == 'file';
+        $isDescriptorResource = isset($this->descriptorspec[$id]) && is_resource($this->descriptorspec[$id]);
+        if ($isDescriptorFile || $isDescriptorResource) {
             return '';
         }
 
