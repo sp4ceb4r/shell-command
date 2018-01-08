@@ -158,13 +158,20 @@ class Command implements CommandInterface
      */
     private function find($command)
     {
-        if (is_file($command)) {
+        if ((is_file($command) && is_executable($command))) {
             return $command;
+        }
+
+        if (!isset($_SERVER['PATH'])) {
+            $_SERVER['PATH'] = implode(
+                ':',
+                ['/usr/local/sbin', '/usr/local/bin', '/usr/sbin', '/usr/bin', '/sbin', '/bin']
+            );
         }
 
         foreach (explode(':', $_SERVER['PATH']) as $path) {
             $tmp = "$path/$command";
-            if (is_file($tmp)) {
+            if (is_file($tmp) && is_executable($tmp)) {
                 return $tmp;
             }
 
