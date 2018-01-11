@@ -1,5 +1,3 @@
-# shell-command
-
 <p align="center">
     <a href="https://travis-ci.org/sp4ceb4r/shell-command">
         <img src="https://travis-ci.org/sp4ceb4r/shell-command.svg" alt="Build Status">
@@ -8,6 +6,8 @@
         <img src="https://poser.pugx.org/sp4ceb4r/shell-command/license.svg" alt="License">
     </a>
 </p>
+
+# shell-command
 
 A simple wrapper of the php proc_open command.
 
