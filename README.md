@@ -16,7 +16,7 @@ Simplifies running and interacting with shell commands within a php script.
 
 ## Getting Started
 
-```
+```php
 $process = Process::make(Command::make('sleep')->withArgs(5))
     ->runAsync();
 $process->wait(2);
