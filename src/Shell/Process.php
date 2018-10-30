@@ -543,6 +543,14 @@ class Process
             return false;
         }
 
+        foreach ($this->pipes as $index => $pipe) {
+            if ($index === static::STDIN) {
+                continue;
+            }
+
+            stream_set_blocking($pipe, static::NON_BLOCKING);
+        }
+
         while ($this->isAlive()) {
             usleep(50000);
         }
