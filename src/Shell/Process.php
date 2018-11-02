@@ -543,6 +543,8 @@ class Process
             return false;
         }
 
+        $this->setStreamBlocking();
+
         while ($this->isAlive()) {
             usleep(50000);
         }
@@ -711,13 +713,7 @@ class Process
             fclose($this->pipes[static::STDIN]);
         }
 
-        foreach ($this->pipes as $index => $pipe) {
-            if ($index === static::STDIN) {
-                continue;
-            }
-
-            stream_set_blocking($pipe, $blocking);
-        }
+        $this->setStreamBlocking($blocking);
     }
 
     /**
@@ -741,6 +737,19 @@ class Process
 
         if (!$this->running) {
             $this->cleanup();
+        }
+    }
+
+    protected function setStreamBlocking($blocking = self::NON_BLOCKING, $pipes = null)
+    {
+        $pipes = $pipes ?: $this->pipes;
+
+        foreach ($pipes as $index => $pipe) {
+            if ($index === static::STDIN) {
+                continue;
+            }
+
+            stream_set_blocking($pipe, $blocking);
         }
     }
 }
