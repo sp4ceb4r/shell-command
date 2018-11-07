@@ -6,6 +6,7 @@ use Closure;
 use Exception;
 use InvalidArgumentException;
 use LogicException;
+use RuntimeException;
 use Shell\Commands\CommandInterface;
 use Shell\Exceptions\ProcessException;
 use Shell\Output\EchoOutputHandler;
@@ -158,6 +159,15 @@ class Process
      */
     protected $pipes = [];
 
+    /**
+     * enable/disable readStream
+     *
+     * @var array
+     */
+    protected $readStreamStatus = [
+        self::STDOUT => true,
+        self::STDERR => true,
+    ];
 
     /**
      * Static Process constructor (preferred when chaining calls).
@@ -198,7 +208,11 @@ class Process
      */
     public function __destruct()
     {
-        $this->cleanup();
+        try {
+            $this->cleanup();
+        } catch (RuntimeException $e) {
+        } catch (ProcessException $e) {
+        }
     }
 
     /**
@@ -270,7 +284,7 @@ class Process
     public function setStdin($stdin)
     {
         if ($this->running) {
-            throw new \RuntimeException('Process already running.');
+            throw new RuntimeException('Process already running.');
         }
 
         $this->descriptorspec[static::STDIN] = $stdin;
@@ -294,7 +308,7 @@ class Process
     public function setStdout($stdout)
     {
         if ($this->running) {
-            throw new \RuntimeException('Process already running.');
+            throw new RuntimeException('Process already running.');
         }
 
         $this->descriptorspec[static::STDOUT] = $stdout;
@@ -318,7 +332,7 @@ class Process
     public function setStderr($stderr)
     {
         if ($this->running) {
-            throw new \RuntimeException('Process already running.');
+            throw new RuntimeException('Process already running.');
         }
 
         $this->descriptorspec[static::STDERR] = $stderr;
@@ -337,7 +351,7 @@ class Process
     public function runAsync($blocking = self::NON_BLOCKING)
     {
         if ($this->running) {
-            throw new \RuntimeException('Process already running.');
+            throw new RuntimeException('Process already running.');
         }
 
         try {
@@ -364,7 +378,7 @@ class Process
     public function run($timeout = -1, $blocking = self::NON_BLOCKING)
     {
         if ($this->running) {
-            throw new \RuntimeException('Process already running.');
+            throw new RuntimeException('Process already running.');
         }
 
         try {
@@ -392,7 +406,7 @@ class Process
     public function runInteractive($blocking = self::NON_BLOCKING)
     {
         if ($this->running) {
-            throw new \RuntimeException('Process already running.');
+            throw new RuntimeException('Process already running.');
         }
 
         try {
@@ -411,6 +425,8 @@ class Process
      * Wait for the process to finish execution.
      *
      * @param int $timeout
+     *
+     * @throws ProcessException
      */
     public function wait($timeout = -1)
     {
@@ -420,14 +436,18 @@ class Process
             $this->read();
 
             if (!$forever && (microtime(true) - $this->start > $timeout)) {
-                $this->kill();
+                $this->kill(SIGKILL);
                 break;
             }
 
             usleep(5000);
         }
 
-        $this->cleanup();
+        try {
+            $this->cleanup();
+        } catch (RuntimeException $e) {
+        } catch (ProcessException $e) {
+        }
     }
 
     /**
@@ -531,7 +551,9 @@ class Process
      * Kill the running process.
      *
      * @param int $signal
+     *
      * @return bool
+     * @throws ProcessException
      */
     public function kill($signal = SIGTERM)
     {
@@ -558,10 +580,36 @@ class Process
      */
     public function read()
     {
-        $stdout = $this->readStream(static::STDOUT);
-        $stderr = $this->readStream(static::STDERR);
+        $streams = [static::STDOUT => '', static::STDERR => ''];
+        $read    = [];
+        $write   = [];
+        $except  = [];
 
-        $this->outputHandler->handle($stdout, $stderr);
+        if (isset($this->pipes[static::STDOUT])) {
+            $read[static::STDOUT] = $this->pipes[static::STDOUT];
+        }
+
+        if (isset($this->pipes[static::STDERR])) {
+            $except[static::STDOUT] = $this->pipes[static::STDERR];
+        }
+
+        $numChangedStreams = stream_select($read, $write, $except, 0);
+        if ($numChangedStreams === false) {
+            throw new RuntimeException('cannot select stream');
+        }
+
+        if ($numChangedStreams > 0) {
+            $pipes = $read + $write + $except;
+            foreach ($pipes as $id => $pipe) {
+                if (isset($this->readStreamStatus[$id]) && !$this->readStreamStatus[$id]) {
+                    continue;
+                }
+
+                $streams[$id] = $this->readStream($id);
+            }
+        }
+
+        $this->outputHandler->handle($streams[1], $streams[2]);
     }
 
     /**
@@ -585,6 +633,29 @@ class Process
     }
 
     /**
+     * @param int|null $id
+     *
+     * @return array|mixed
+     */
+    public function getReadStreamStatus(int $id = null)
+    {
+        return $id ? $this->readStreamStatus[$id] : $this->readStreamStatus;
+    }
+
+    /**
+     * @param int  $id
+     * @param bool $status
+     *
+     * @return $this
+     */
+    public function setReadStreamStatus(int $id, bool $status)
+    {
+        $this->readStreamStatus[$id] = $status;
+
+        return $this;
+    }
+
+    /**
      * Reads the current contents of the specified pipe.
      *
      * @param $id
@@ -598,9 +669,7 @@ class Process
             return '';
         }
 
-        $data = stream_get_contents($this->pipes[$id]);
-
-        return $data;
+        return stream_get_contents($this->pipes[$id]);
     }
 
     /**
@@ -644,12 +713,12 @@ class Process
     /**
      * Release the process memory.
      *
-     * @throws \RuntimeException
+     * @throws ProcessException
      */
     protected function cleanup()
     {
         if ($this->running) {
-            throw new \RuntimeException(sprintf('Cleanup error - process still running: %s', is_scalar($this->command) ? $this->command : $this->command->serialize()));
+            throw new RuntimeException(sprintf('Cleanup error - process still running: %s', is_scalar($this->command) ? $this->command : $this->command->serialize()));
         }
 
         if (!isset($this->resource)) {
@@ -718,6 +787,8 @@ class Process
 
     /**
      * Check the current processes status.
+     *
+     * @throws ProcessException
      */
     private function checkStatus()
     {

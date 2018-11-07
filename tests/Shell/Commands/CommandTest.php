@@ -67,18 +67,18 @@ class CommandTest extends PHPUnit_Framework_TestCase
 
     public function test_serialize_no_args_no_opts()
     {
-        $cmd = new Command('phpunit');
+        $cmd = new Command('test');
 
-        $this->assertEquals('phpunit', substr($cmd->serialize(), 0-strlen('phpunit')));
+        $this->assertEquals('test', substr($cmd->serialize(), 0-strlen('test')));
     }
 
     public function test_serialize_with_args()
     {
         $args = ['a', 'b', 'c'];
 
-        $cmd = Command::make('phpunit')->withArgs($args);
+        $cmd = Command::make('test')->withArgs($args);
 
-        $expected = 'phpunit a b c';
+        $expected = 'test a b c';
         $this->assertEquals($expected, substr($cmd->serialize(), 0-strlen($expected)));
     }
 
@@ -90,9 +90,9 @@ class CommandTest extends PHPUnit_Framework_TestCase
             '--single' => 'z',
         ];
 
-        $cmd = Command::make('phpunit')->withOptions($opts);
+        $cmd = Command::make('test')->withOptions($opts);
 
-        $expected = 'phpunit --long --single z --array f g';
+        $expected = 'test --long --single z --array f g';
         $this->assertEquals($expected, substr($cmd->serialize(), 0-strlen($expected)));
     }
 
@@ -105,9 +105,9 @@ class CommandTest extends PHPUnit_Framework_TestCase
             '--single' => 'z',
         ];
 
-        $cmd = new Command('phpunit', $args, $opts);
+        $cmd = new Command('test', $args, $opts);
 
-        $expected = 'phpunit a b c --long --single z --array f g';
+        $expected = 'test a b c --long --single z --array f g';
         $this->assertEquals($expected, substr($cmd->serialize(), 0-strlen($expected)));
     }
 
