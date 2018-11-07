@@ -443,11 +443,7 @@ class Process
             usleep(5000);
         }
 
-        try {
-            $this->cleanup();
-        } catch (RuntimeException $e) {
-        } catch (ProcessException $e) {
-        }
+        $this->cleanup();
     }
 
     /**
@@ -609,7 +605,7 @@ class Process
             }
         }
 
-        $this->outputHandler->handle($streams[1], $streams[2]);
+        $this->outputHandler->handle($streams[static::STDOUT], $streams[static::STDERR]);
     }
 
     /**
@@ -738,6 +734,8 @@ class Process
 
         proc_close($this->resource);
         unset($this->resource, $this->pipes);
+
+        $this->running = false;
 
         if (in_array($this->exitcode, $this->getExpectedExitcodes())) {
             if (isset($this->onSuccess)) {
