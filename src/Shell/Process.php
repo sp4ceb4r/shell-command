@@ -443,11 +443,7 @@ class Process
             usleep(5000);
         }
 
-        try {
-            $this->cleanup();
-        } catch (RuntimeException $e) {
-        } catch (ProcessException $e) {
-        }
+        $this->cleanup();
     }
 
     /**
