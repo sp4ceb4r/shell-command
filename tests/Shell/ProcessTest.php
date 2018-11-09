@@ -86,7 +86,7 @@ class ProcessTest extends PHPUnit_Framework_TestCase
         $process->wait(2);
 
         $this->assertLessThan(5, time() - $start);
-        $this->assertEquals(SIGTERM, $process->getSignal());
+        $this->assertEquals(SIGKILL, $process->getSignal());
     }
 
     public function test_kill()
