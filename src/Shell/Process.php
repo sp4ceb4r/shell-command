@@ -586,7 +586,7 @@ class Process
         }
 
         if (isset($this->pipes[static::STDERR])) {
-            $except[static::STDOUT] = $this->pipes[static::STDERR];
+            $except[static::STDERR] = $this->pipes[static::STDERR];
         }
 
         $numChangedStreams = stream_select($read, $write, $except, 0);
